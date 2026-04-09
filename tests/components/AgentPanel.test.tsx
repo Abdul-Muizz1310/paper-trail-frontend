@@ -13,26 +13,14 @@ const r = (index: number, side: "pro" | "con"): Round => ({
 
 describe("AgentPanel", () => {
   it("P1 renders rounds ordered by index", () => {
-    render(
-      <AgentPanel
-        side="pro"
-        rounds={[r(1, "pro"), r(0, "pro")]}
-        isActive={false}
-      />,
-    );
+    render(<AgentPanel side="pro" rounds={[r(1, "pro"), r(0, "pro")]} isActive={false} />);
     const cards = screen.getAllByTestId("evidence-card");
     expect(cards[0]).toHaveTextContent("b0");
     expect(cards[1]).toHaveTextContent("b1");
   });
 
   it("F1 filters out rounds whose side does not match", () => {
-    render(
-      <AgentPanel
-        side="pro"
-        rounds={[r(0, "pro"), r(1, "con")]}
-        isActive={false}
-      />,
-    );
+    render(<AgentPanel side="pro" rounds={[r(0, "pro"), r(1, "con")]} isActive={false} />);
     expect(screen.getAllByTestId("evidence-card")).toHaveLength(1);
   });
 });

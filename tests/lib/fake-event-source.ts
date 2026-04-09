@@ -50,14 +50,18 @@ export class FakeEventSource {
     this.readyState = 1;
     const ev = new Event("open");
     this.onopen?.(ev);
-    this.listeners.get("open")?.forEach((l) => l(ev));
+    this.listeners.get("open")?.forEach((l) => {
+      l(ev);
+    });
   }
 
   emit(name: string, data: unknown): void {
     const ev = new MessageEvent(name, {
       data: typeof data === "string" ? data : JSON.stringify(data),
     });
-    this.listeners.get(name)?.forEach((l) => l(ev));
+    this.listeners.get(name)?.forEach((l) => {
+      l(ev);
+    });
     if (name === "message") this.onmessage?.(ev);
   }
 
@@ -65,6 +69,8 @@ export class FakeEventSource {
     this.readyState = 2;
     const ev = new Event("error");
     this.onerror?.(ev);
-    this.listeners.get("error")?.forEach((l) => l(ev));
+    this.listeners.get("error")?.forEach((l) => {
+      l(ev);
+    });
   }
 }

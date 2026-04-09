@@ -3,18 +3,13 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 
 const DEBATE_ID = "11111111-1111-1111-1111-111111111111";
-const TRANSCRIPT_MD = readFileSync(
-  path.join(__dirname, "fixtures", "transcript.md"),
-  "utf-8",
-);
+const TRANSCRIPT_MD = readFileSync(path.join(__dirname, "fixtures", "transcript.md"), "utf-8");
 
 /**
  * Build an SSE response body from a list of (event, data) tuples.
  */
 function sseBody(events: Array<[string, unknown]>): string {
-  return events
-    .map(([ev, data]) => `event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`)
-    .join("");
+  return events.map(([ev, data]) => `event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`).join("");
 }
 
 function debateBody(rounds: number, done = false) {
@@ -68,9 +63,18 @@ test.describe("debate flow (mocked backend)", () => {
         status: 200,
         contentType: "text/event-stream",
         body: sseBody([
-          ["state", { type: "state", status: "running", verdict: null, confidence: null, rounds_count: 1 }],
-          ["state", { type: "state", status: "running", verdict: null, confidence: null, rounds_count: 2 }],
-          ["done", { type: "done", status: "done", verdict: "TRUE", confidence: 0.78, rounds_count: 3 }],
+          [
+            "state",
+            { type: "state", status: "running", verdict: null, confidence: null, rounds_count: 1 },
+          ],
+          [
+            "state",
+            { type: "state", status: "running", verdict: null, confidence: null, rounds_count: 2 },
+          ],
+          [
+            "done",
+            { type: "done", status: "done", verdict: "TRUE", confidence: 0.78, rounds_count: 3 },
+          ],
         ]),
       });
     });
@@ -88,7 +92,9 @@ test.describe("debate flow (mocked backend)", () => {
     await page.getByRole("button", { name: /submit|debate|start/i }).click();
 
     await expect(page).toHaveURL(new RegExp(`/debates/${DEBATE_ID}$`));
-    await expect(page.getByTestId("judge-verdict")).toHaveAttribute("data-variant", "true", { timeout: 10_000 });
+    await expect(page.getByTestId("judge-verdict")).toHaveAttribute("data-variant", "true", {
+      timeout: 10_000,
+    });
 
     await page.getByRole("link", { name: /transcript/i }).click();
     await expect(page).toHaveURL(new RegExp(`/debates/${DEBATE_ID}/transcript$`));
@@ -107,7 +113,11 @@ test.describe("debate flow (mocked backend)", () => {
 
   test("F2 backend 404 on debate → error state with Go home link", async ({ page }) => {
     await page.route(`**/debates/${DEBATE_ID}`, (route) =>
-      route.fulfill({ status: 404, contentType: "application/json", body: '{"detail":"debate not found"}' }),
+      route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: '{"detail":"debate not found"}',
+      }),
     );
     await page.route(`**/debates/${DEBATE_ID}/stream`, (route) =>
       route.fulfill({

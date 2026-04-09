@@ -44,8 +44,20 @@ describe("useDebateStream — pass cases", () => {
     const es = FakeEventSource.last();
     act(() => {
       es.openNow();
-      es.emit("state", { type: "state", status: "running", verdict: null, confidence: null, rounds_count: 1 });
-      es.emit("state", { type: "state", status: "running", verdict: null, confidence: null, rounds_count: 2 });
+      es.emit("state", {
+        type: "state",
+        status: "running",
+        verdict: null,
+        confidence: null,
+        rounds_count: 1,
+      });
+      es.emit("state", {
+        type: "state",
+        status: "running",
+        verdict: null,
+        confidence: null,
+        rounds_count: 2,
+      });
     });
     await waitFor(() => expect(onStateChange).toHaveBeenCalledTimes(2));
     expect(onStateChange.mock.calls[0][0].rounds_count).toBe(1);
@@ -57,7 +69,13 @@ describe("useDebateStream — pass cases", () => {
     const es = FakeEventSource.last();
     act(() => {
       es.openNow();
-      es.emit("done", { type: "done", status: "done", verdict: "TRUE", confidence: 0.9, rounds_count: 4 });
+      es.emit("done", {
+        type: "done",
+        status: "done",
+        verdict: "TRUE",
+        confidence: 0.9,
+        rounds_count: 4,
+      });
     });
     await waitFor(() => expect(result.current.phase.kind).toBe("done"));
     expect(es.readyState).toBe(2);
@@ -70,39 +88,39 @@ describe("useDebateStream — pass cases", () => {
     expect(FakeEventSource.last().readyState).toBe(2);
   });
 
-  it("P6 reconnects on transient error and returns to streaming", async () => {
+  it("P6 reconnects on transient error and returns to streaming", () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useDebateStream(DEBATE_ID, { maxRetries: 3 }));
-    act(() => FakeEventSource.last().openNow());
-    act(() =>
+    act(() => {
+      FakeEventSource.last().openNow();
       FakeEventSource.last().emit("state", {
         type: "state",
         status: "running",
         verdict: null,
         confidence: null,
         rounds_count: 1,
-      }),
-    );
-    await waitFor(() => expect(result.current.phase.kind).toBe("streaming"));
+      });
+    });
+    expect(result.current.phase.kind).toBe("streaming");
 
     act(() => FakeEventSource.last().fail());
     expect(result.current.phase.kind).toBe("connecting");
 
     // Advance past the first backoff (500ms default for attempt 0).
-    await act(async () => {
+    act(() => {
       vi.advanceTimersByTime(1000);
     });
-    act(() => FakeEventSource.last().openNow());
-    act(() =>
+    act(() => {
+      FakeEventSource.last().openNow();
       FakeEventSource.last().emit("state", {
         type: "state",
         status: "running",
         verdict: null,
         confidence: null,
         rounds_count: 2,
-      }),
-    );
-    await waitFor(() => expect(result.current.phase.kind).toBe("streaming"));
+      });
+    });
+    expect(result.current.phase.kind).toBe("streaming");
     expect(FakeEventSource.instances.length).toBeGreaterThanOrEqual(2);
   });
 });
@@ -124,22 +142,20 @@ describe("useDebateStream — failure cases (negative space)", () => {
     expect(FakeEventSource.instances.length).toBe(1);
   });
 
-  it("F2 exhausts maxRetries then errors with max_retries_exceeded", async () => {
+  it("F2 exhausts maxRetries then errors with max_retries_exceeded", () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useDebateStream(DEBATE_ID, { maxRetries: 2 }));
 
     for (let i = 0; i < 3; i++) {
       act(() => FakeEventSource.last().fail());
-      await act(async () => {
-        vi.advanceTimersByTime(20000);
+      act(() => {
+        vi.advanceTimersByTime(20_000);
       });
     }
-    await waitFor(() => {
-      expect(result.current.phase.kind).toBe("error");
-      if (result.current.phase.kind === "error") {
-        expect(result.current.phase.reason).toBe("max_retries_exceeded");
-      }
-    });
+    expect(result.current.phase.kind).toBe("error");
+    if (result.current.phase.kind === "error") {
+      expect(result.current.phase.reason).toBe("max_retries_exceeded");
+    }
   });
 
   it("F3 malformed JSON state event is dropped", async () => {
