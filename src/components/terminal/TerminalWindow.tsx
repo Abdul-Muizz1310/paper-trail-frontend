@@ -35,7 +35,7 @@ export function TerminalWindow({
   return (
     <section
       className={cn(
-        "rounded-xl bg-surface backdrop-blur-sm",
+        "min-w-0 overflow-hidden rounded-xl bg-surface backdrop-blur-sm",
         strong ? "terminal-glow-strong" : "terminal-glow",
         className,
       )}

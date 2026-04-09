@@ -29,7 +29,7 @@ export function EvidenceCard({ round, compact, reveal = false }: EvidenceCardPro
       data-testid="evidence-card"
       data-side={round.side}
       className={cn(
-        "group relative rounded-lg border border-border bg-background/40 p-4 transition-colors hover:border-border-bright hover:bg-surface-hover",
+        "group relative min-w-0 overflow-hidden rounded-lg border border-border bg-background/40 p-4 transition-colors hover:border-border-bright hover:bg-surface-hover",
         compact && "text-sm",
       )}
     >
@@ -40,7 +40,7 @@ export function EvidenceCard({ round, compact, reveal = false }: EvidenceCardPro
       <TypewriterMarkdown
         markdown={round.body_md}
         speed={reveal ? 420 : 0}
-        className="prose-terminal"
+        className="prose-terminal break-words"
       />
       {hasEvidence && (
         <div className="mt-4 border-t border-dashed border-border pt-3">
@@ -48,20 +48,21 @@ export function EvidenceCard({ round, compact, reveal = false }: EvidenceCardPro
             <span className="text-accent-cyan">{"//"}</span>
             <span>sources ({round.evidence.length})</span>
           </div>
-          <ul className="flex flex-col gap-1.5 font-mono text-xs">
+          <ul className="flex min-w-0 flex-col gap-2 font-mono text-xs">
             {evidence.map((ev) => (
-              <li key={`${ev.url}-${ev.title}`}>
+              <li key={`${ev.url}-${ev.title}`} className="min-w-0">
                 <a
                   href={ev.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-start gap-1.5 text-accent-cyan transition-colors hover:text-foreground"
+                  className="flex min-w-0 items-start gap-1.5 text-accent-cyan transition-colors hover:text-foreground"
+                  title={ev.title}
                 >
-                  <span className="text-fg-faint">→</span>
-                  <span className="truncate">{ev.title}</span>
+                  <span className="shrink-0 text-fg-faint">→</span>
+                  <span className="min-w-0 flex-1 truncate">{ev.title}</span>
                 </a>
                 {ev.quote && (
-                  <blockquote className="mt-1 line-clamp-2 border-l-2 border-border pl-2 text-[11px] italic text-fg-muted">
+                  <blockquote className="mt-1 line-clamp-2 overflow-hidden break-words border-l-2 border-border pl-2 text-[11px] italic text-fg-muted">
                     “{ev.quote}”
                   </blockquote>
                 )}
