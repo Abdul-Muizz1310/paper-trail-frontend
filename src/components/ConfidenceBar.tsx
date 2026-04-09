@@ -16,16 +16,17 @@ export function ConfidenceBar({ value, label }: ConfidenceBarProps) {
       aria-valuemin={0}
       aria-valuemax={1}
       aria-valuenow={isValid ? clamped : undefined}
-      className="flex items-center gap-3"
+      className="flex items-center gap-3 font-mono text-xs"
     >
-      <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted">
+      <span className="text-fg-faint">confidence</span>
+      <div className="relative h-1.5 flex-1 overflow-hidden rounded-full border border-border bg-background">
         <div
           data-testid="confidence-fill"
-          className="h-full rounded-full bg-primary transition-[width] duration-500"
+          className="h-full rounded-full bg-gradient-to-r from-accent-cyan to-accent-blue shadow-[0_0_12px_rgb(34_211_238_/_0.6)] transition-[width] duration-700 ease-out"
           style={{ width: pct }}
         />
       </div>
-      <span className="text-xs tabular-nums text-muted-foreground">{label ?? pct}</span>
+      <span className="tabular-nums text-accent-cyan">{label ?? pct}</span>
     </div>
   );
 }

@@ -116,14 +116,14 @@ test.describe("debate flow (mocked backend)", () => {
 
     await page.goto("/");
     await page.getByRole("textbox", { name: /claim/i }).fill("Remote work reduces productivity.");
-    await page.getByRole("button", { name: /start debate/i }).click();
+    await page.getByRole("button", { name: /start[- ]debate/i }).click();
 
     await expect(page).toHaveURL(new RegExp(`/debates/${DEBATE_ID}$`));
     await expect(page.getByTestId("judge-verdict")).toHaveAttribute("data-variant", "true", {
       timeout: 10_000,
     });
 
-    await page.getByRole("link", { name: /view transcript/i }).click();
+    await page.getByRole("link", { name: /transcript/i }).click();
     await expect(page).toHaveURL(new RegExp(`/debates/${DEBATE_ID}/transcript$`));
     await expect(page.getByRole("heading", { name: /final reasoning/i })).toBeVisible();
   });
@@ -174,7 +174,7 @@ test.describe("debate flow (mocked backend)", () => {
     });
     await page.goto("/");
     await page.getByRole("textbox", { name: /claim/i }).fill("my precious claim");
-    await page.getByRole("button", { name: /start debate/i }).click();
+    await page.getByRole("button", { name: /start[- ]debate/i }).click();
     await expect(page.getByText(/couldn't start the debate/i)).toBeVisible();
     await expect(page.getByRole("textbox", { name: /claim/i })).toHaveValue("my precious claim");
   });

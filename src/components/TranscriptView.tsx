@@ -10,15 +10,15 @@ export function TranscriptView({ markdown }: TranscriptViewProps) {
     return (
       <div
         data-testid="transcript-empty"
-        className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground"
+        className="rounded-lg border border-dashed border-border bg-background/40 p-10 text-center font-mono text-sm text-fg-muted"
       >
-        This debate has no transcript yet.
+        <span className="text-accent-cyan">{"//"}</span> this debate has no transcript yet.
       </div>
     );
   }
 
   return (
-    <article className="prose prose-sm max-w-none dark:prose-invert md:prose-base">
+    <article className="prose-terminal">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
     </article>
   );

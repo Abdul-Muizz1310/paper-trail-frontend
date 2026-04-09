@@ -36,6 +36,7 @@ describe("ClaimInput", () => {
   it("F3 isPending disables the textbox and button", () => {
     render(<ClaimInput onSubmit={vi.fn()} isPending={true} defaultClaim="hi" />);
     expect(screen.getByRole("textbox", { name: /claim/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /submit|debate|start/i })).toBeDisabled();
+    // When pending the button label switches to "compiling…"
+    expect(screen.getByRole("button", { name: /compiling|start|debate/i })).toBeDisabled();
   });
 });

@@ -1,10 +1,17 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Round } from "@/lib/schemas";
+import { cn } from "@/lib/utils";
 
 export type EvidenceCardProps = {
   round: Round;
   compact?: boolean;
+};
+
+const SIDE_LABEL: Record<Round["side"], string> = {
+  pro: "pro.claim",
+  con: "con.claim",
+  judge: "judge.note",
 };
 
 export function EvidenceCard({ round, compact }: EvidenceCardProps) {
@@ -14,34 +21,39 @@ export function EvidenceCard({ round, compact }: EvidenceCardProps) {
     <article
       data-testid="evidence-card"
       data-side={round.side}
-      className={`rounded-lg border border-border bg-card p-4 shadow-sm ${compact ? "text-sm" : ""}`}
+      className={cn(
+        "group relative rounded-lg border border-border bg-background/40 p-4 transition-colors hover:border-border-bright hover:bg-surface-hover",
+        compact && "text-sm",
+      )}
     >
-      <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
-        <span>Round {round.index + 1}</span>
-        <span>{round.side}</span>
+      <div className="mb-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.12em] text-fg-faint">
+        <span>{SIDE_LABEL[round.side]}</span>
+        <span className="tabular-nums">{String(round.index + 1).padStart(2, "0")}</span>
       </div>
-      <div className="prose prose-sm max-w-none dark:prose-invert">
+      <div className="prose-terminal">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{round.body_md}</ReactMarkdown>
       </div>
       {hasEvidence && (
-        <div className="mt-3 border-t border-border pt-3">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Sources
+        <div className="mt-4 border-t border-dashed border-border pt-3">
+          <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-faint">
+            <span className="text-accent-cyan">{"//"}</span>
+            <span>sources ({round.evidence.length})</span>
           </div>
-          <ul className="flex flex-col gap-1 text-sm">
+          <ul className="flex flex-col gap-1.5 font-mono text-xs">
             {round.evidence.map((ev) => (
               <li key={ev.url}>
                 <a
                   href={ev.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary underline-offset-4 hover:underline"
+                  className="inline-flex items-center gap-1.5 text-accent-cyan transition-colors hover:text-foreground"
                 >
+                  <span className="text-fg-faint">→</span>
                   {ev.title}
                 </a>
                 {ev.quote && (
-                  <blockquote className="mt-1 border-l-2 border-border pl-2 text-xs text-muted-foreground">
-                    {ev.quote}
+                  <blockquote className="mt-1 border-l-2 border-border pl-2 text-[11px] text-fg-muted">
+                    “{ev.quote}”
                   </blockquote>
                 )}
               </li>

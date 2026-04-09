@@ -1,4 +1,5 @@
 import { EvidenceCard } from "@/components/EvidenceCard";
+import { TerminalWindow } from "@/components/terminal/TerminalWindow";
 import type { Round, Side } from "@/lib/schemas";
 
 export type AgentPanelProps = {
@@ -7,26 +8,46 @@ export type AgentPanelProps = {
   isActive: boolean;
 };
 
+const CONFIG: Record<
+  AgentPanelProps["side"],
+  { title: string; accent: "green" | "red"; empty: string }
+> = {
+  pro: {
+    title: "pro.agent.md",
+    accent: "green",
+    empty: "// awaiting response…",
+  },
+  con: {
+    title: "con.agent.md",
+    accent: "red",
+    empty: "// awaiting response…",
+  },
+};
+
 export function AgentPanel({ side, rounds, isActive }: AgentPanelProps) {
   const filtered = rounds.filter((r) => r.side === side).sort((a, b) => a.index - b.index);
+  const cfg = CONFIG[side];
 
   return (
-    <section
-      data-testid={`arena-column-${side}`}
-      data-active={isActive}
-      className="flex min-h-[200px] flex-col gap-3 rounded-xl border border-border bg-background/40 p-4"
+    <TerminalWindow
+      title={cfg.title}
+      statusDot={isActive ? "cyan" : cfg.accent}
+      statusLabel={isActive ? "live" : `${filtered.length}`}
+      bodyClassName="p-4 md:p-5"
     >
-      <header className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider">
-          {side === "pro" ? "Pro" : "Con"}
-        </h2>
-        {isActive && <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-primary" />}
-      </header>
-      <div className="flex flex-col gap-3">
-        {filtered.map((r) => (
-          <EvidenceCard key={`${r.side}-${r.index}`} round={r} />
-        ))}
+      <div data-testid={`arena-column-${side}`} data-active={isActive}>
+        {filtered.length === 0 ? (
+          <div className="flex min-h-[160px] items-center justify-center font-mono text-xs text-fg-faint">
+            {cfg.empty}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {filtered.map((r) => (
+              <EvidenceCard key={`${r.side}-${r.index}`} round={r} />
+            ))}
+          </div>
+        )}
       </div>
-    </section>
+    </TerminalWindow>
   );
 }

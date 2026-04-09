@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "paper-trail — live AI debate",
   description:
-    "Enter a claim, watch two AI agents debate it live, read the judge's verdict and the full transcript.",
+    "Enter a claim. Two AI agents argue it live with citations. A third judges. Every debate is a receipt.",
 };
 
 export default function RootLayout({
@@ -26,8 +26,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col bg-background text-foreground">
-        <Providers>{children}</Providers>
+      <body className="relative flex min-h-full flex-col bg-background text-foreground bg-grid bg-scanlines">
+        <Providers>
+          <div className="relative z-10 flex min-h-screen flex-col pb-8">{children}</div>
+        </Providers>
       </body>
     </html>
   );
