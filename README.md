@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# paper-trail-frontend
 
-## Getting Started
+Next.js (App Router) UI for **paper-trail** — a LangGraph multi-agent debater that takes a claim, runs pro/con agents, a judge, and streams the transcript live.
 
-First, run the development server:
+Backend: [`paper-trail-backend`](https://github.com/Abdul-Muizz1310/paper-trail-backend) — deployed at `https://paper-trail-backend-7h27.onrender.com`.
+
+## Stack
+
+- Next.js 16 (App Router, RSC, React 19)
+- TypeScript (strict)
+- Tailwind v4 + shadcn/ui
+- TanStack Query + Zustand
+- Framer Motion
+- Vitest + Testing Library + Playwright
+- Biome (lint + format)
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local   # edit if backend URL differs
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Var | Purpose |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | FastAPI backend base URL (SSE + REST) |
+| `NEXT_PUBLIC_SITE_URL` | Public canonical URL (OG tags, absolute links) |
 
-## Learn More
+Validated at import time in [`src/lib/env.ts`](src/lib/env.ts) via zod.
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `pnpm dev` — Next.js dev server
+- `pnpm build` — production build
+- `pnpm test` — Vitest unit tests
+- `pnpm test:e2e` — Playwright
+- `pnpm lint` — Biome check
+- `pnpm format` — Biome write
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT — see [LICENSE](LICENSE).
