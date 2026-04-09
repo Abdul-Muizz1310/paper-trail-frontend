@@ -15,13 +15,16 @@ class ApiError extends Error {
 }
 
 async function jsonFetch(path: string, init?: RequestInit): Promise<unknown> {
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, {
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+  // NOTE: only set content-type when we have a body. Adding it to a
+  // cross-origin GET turns it into a non-simple request and forces a
+  // CORS preflight, which the backend rejects for test/mocked setups.
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (init?.body && !headers["content-type"]) {
+    headers["content-type"] = "application/json";
+  }
+  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, { ...init, headers });
   if (!res.ok) {
     throw new ApiError(res.status, `${init?.method ?? "GET"} ${path} → ${res.status}`);
   }
