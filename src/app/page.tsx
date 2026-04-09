@@ -1,3 +1,4 @@
+import { BackendStatus } from "@/components/BackendStatus";
 import { PageFrame } from "@/components/terminal/PageFrame";
 import { Prompt } from "@/components/terminal/Prompt";
 import { TerminalWindow } from "@/components/terminal/TerminalWindow";
@@ -47,6 +48,7 @@ export default function HomePage() {
             </p>
 
             <HomeClaimForm />
+            <BackendStatus />
           </div>
 
           <div className="lg:mt-6">
