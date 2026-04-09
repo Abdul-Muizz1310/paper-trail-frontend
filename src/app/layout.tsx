@@ -25,11 +25,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="relative flex min-h-full flex-col bg-background text-foreground bg-grid bg-scanlines">
-        <Providers>
-          <div className="relative z-10 flex min-h-screen flex-col pb-8">{children}</div>
-        </Providers>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className="relative bg-background text-foreground bg-grid bg-scanlines">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

@@ -1,19 +1,27 @@
-import { AppNav } from "@/components/terminal/AppNav";
+import { PageFrame } from "@/components/terminal/PageFrame";
 import { Prompt } from "@/components/terminal/Prompt";
-import { StatusBar } from "@/components/terminal/StatusBar";
 import { TerminalWindow } from "@/components/terminal/TerminalWindow";
 import { HomeClaimForm } from "./_home/HomeClaimForm";
 
 export default function HomePage() {
   return (
-    <>
-      <AppNav active="home" />
-
-      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-14 px-4 pt-16 pb-20 md:px-6 md:pt-24">
-        {/* Hero: prompts + input left, sample debate window right */}
-        <section className="grid grid-cols-1 gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="flex flex-col gap-8">
-            {/* Terminal intro lines */}
+    <PageFrame
+      active="home"
+      statusLeft="paper-trail.dev ~/"
+      statusRight={
+        <>
+          <span>UTF-8</span>
+          <span className="text-fg-faint">·</span>
+          <span>
+            backend <span className="text-success">OK</span>
+          </span>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-14 pt-6 md:pt-10">
+        {/* Hero */}
+        <section className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="flex flex-col gap-7">
             <div className="flex flex-col gap-1.5">
               <Prompt kind="comment">welcome to paper-trail</Prompt>
               <Prompt kind="input">whoami</Prompt>
@@ -25,7 +33,6 @@ export default function HomePage() {
               </Prompt>
             </div>
 
-            {/* Huge headline */}
             <h1 className="font-mono text-4xl font-semibold leading-[1.05] tracking-tight text-foreground md:text-5xl lg:text-[3.25rem]">
               watch AI{" "}
               <span className="relative text-accent-cyan">
@@ -42,8 +49,7 @@ export default function HomePage() {
             <HomeClaimForm />
           </div>
 
-          {/* Sample debate preview window */}
-          <div className="lg:mt-10">
+          <div className="lg:mt-6">
             <TerminalWindow title="sample.debate.run" statusDot="cyan" statusLabel="preview" strong>
               <div className="flex flex-col gap-4 font-mono text-xs">
                 <div className="flex items-center gap-2 text-fg-faint">
@@ -63,7 +69,7 @@ export default function HomePage() {
                       <span>01</span>
                     </div>
                     <p className="text-[11px] leading-relaxed text-foreground">
-                      Studies from Stanford (2023) show remote workers report{" "}
+                      Stanford 2023 shows remote workers report{" "}
                       <span className="text-accent-cyan">13% higher productivity</span>…
                     </p>
                   </div>
@@ -76,8 +82,9 @@ export default function HomePage() {
                       <span>01</span>
                     </div>
                     <p className="text-[11px] leading-relaxed text-foreground">
-                      Collaboration bandwidth drops <span className="text-accent-cyan">~20%</span>{" "}
-                      in async-only teams per Microsoft telemetry…
+                      Async collaboration bandwidth drops{" "}
+                      <span className="text-accent-cyan">~20%</span> in async-only teams per
+                      Microsoft telemetry…
                     </p>
                   </div>
                 </div>
@@ -141,20 +148,7 @@ export default function HomePage() {
             </div>
           ))}
         </section>
-      </main>
-
-      <StatusBar
-        left="paper-trail.dev ~/"
-        right={
-          <>
-            <span>UTF-8</span>
-            <span className="text-fg-faint">·</span>
-            <span>
-              backend <span className="text-success">OK</span>
-            </span>
-          </>
-        }
-      />
-    </>
+      </div>
+    </PageFrame>
   );
 }

@@ -47,10 +47,11 @@ export function DebateArena({ pro, con, phase, errorMessage }: DebateArenaProps)
     );
   }
 
+  const streaming = phase === "streaming";
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-      <AgentPanel side="pro" rounds={pro} isActive={phase === "streaming"} />
-      <AgentPanel side="con" rounds={con} isActive={phase === "streaming"} />
+      <AgentPanel side="pro" rounds={pro} isActive={streaming} reveal={streaming} />
+      <AgentPanel side="con" rounds={con} isActive={streaming} reveal={streaming} />
     </div>
   );
 }

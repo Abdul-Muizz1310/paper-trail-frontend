@@ -4,49 +4,83 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { DebateArena, type DebatePhase } from "@/components/DebateArena";
 import { JudgeVerdict } from "@/components/JudgeVerdict";
-import { AppNav } from "@/components/terminal/AppNav";
+import { PageFrame } from "@/components/terminal/PageFrame";
 import { Prompt } from "@/components/terminal/Prompt";
-import { StatusBar } from "@/components/terminal/StatusBar";
-import { useDebate, useInvalidateDebate } from "@/lib/api";
-import type { Round, Verdict } from "@/lib/schemas";
+import { useDebate, useInvalidateDebate, usePatchDebate } from "@/lib/api";
+import { parseRounds, type Round, type Verdict } from "@/lib/schemas";
 import { useDebateStream } from "@/lib/sse";
+import { extractJudgeReasoning } from "@/lib/transcript";
 
 type Props = { debateId: string };
 
-function splitRounds(rounds: Round[]): {
-  pro: Round[];
-  con: Round[];
-  judge?: Round;
-} {
+function splitRounds(rounds: Round[]): { pro: Round[]; con: Round[] } {
   const pro: Round[] = [];
   const con: Round[] = [];
-  let judge: Round | undefined;
   for (const r of rounds) {
     if (r.side === "pro") pro.push(r);
     else if (r.side === "con") con.push(r);
-    else judge = r;
   }
-  return { pro, con, judge };
+  return { pro, con };
 }
 
 export function DebateView({ debateId }: Props) {
   const debateQuery = useDebate(debateId);
   const invalidate = useInvalidateDebate(debateId);
+  const patch = usePatchDebate(debateId);
   const { phase: streamPhase } = useDebateStream(debateId, {
-    onStateChange: () => {
+    onStateChange: (ev) => {
+      // If the backend inlined rounds in the SSE payload (v0.1.1+),
+      // patch the cache directly — no extra HTTP round-trip.
+      const patchBody: Partial<{
+        status: string;
+        verdict: Verdict | null;
+        confidence: number | null;
+        rounds: Round[];
+      }> = {
+        status: ev.status,
+        verdict: ev.verdict,
+        confidence: ev.confidence,
+      };
+      if (ev.rounds !== undefined) {
+        patchBody.rounds = parseRounds(ev.rounds);
+      }
+      patch(patchBody);
+      // Still trigger a background refetch for transcript_md, which
+      // the state event doesn't carry.
       void invalidate();
     },
   });
 
+  // On terminal state, refetch once more to pull final transcript.
   useEffect(() => {
-    if (streamPhase.kind === "done") {
-      void invalidate();
+    if (streamPhase.kind === "done") void invalidate();
+  }, [streamPhase.kind, invalidate]);
+
+  // Safety-net poll while running, in case SSE is silent.
+  useEffect(() => {
+    if (streamPhase.kind !== "streaming" && streamPhase.kind !== "connecting") {
+      return;
     }
+    const id = window.setInterval(() => {
+      void invalidate();
+    }, 3000);
+    return () => window.clearInterval(id);
   }, [streamPhase.kind, invalidate]);
 
   const shortId = debateId.slice(0, 8);
 
-  const body = (() => {
+  const statusText =
+    streamPhase.kind === "error"
+      ? streamPhase.reason
+      : streamPhase.kind === "done"
+        ? "done"
+        : streamPhase.kind === "streaming"
+          ? "streaming"
+          : "connecting";
+
+  const debate = debateQuery.data;
+
+  const renderBody = () => {
     if (debateQuery.isPending) {
       return <DebateArena pro={[]} con={[]} phase="loading" />;
     }
@@ -73,20 +107,24 @@ export function DebateView({ debateId }: Props) {
       );
     }
 
-    const debate = debateQuery.data;
-    const { pro, con, judge } = splitRounds(debate.rounds);
+    // Narrow — we know data is defined
+    // biome-ignore lint/style/noNonNullAssertion: guarded by isPending/isError above
+    const d = debate!;
+    const { pro, con } = splitRounds(d.rounds);
 
     const isTerminal =
-      debate.status === "done" ||
-      debate.status === "failed" ||
-      debate.status === "error" ||
+      d.status === "done" ||
+      d.status === "failed" ||
+      d.status === "error" ||
       streamPhase.kind === "done" ||
       streamPhase.kind === "error";
 
     const arenaPhase: DebatePhase =
       streamPhase.kind === "error" ? "error" : isTerminal ? "done" : "streaming";
 
-    const showVerdict = isTerminal && debate.verdict !== null && debate.confidence !== null;
+    const showVerdict = isTerminal && d.verdict !== null && d.confidence !== null;
+
+    const reasoning = extractJudgeReasoning(d.transcript_md);
 
     return (
       <div className="flex flex-col gap-6">
@@ -103,11 +141,11 @@ export function DebateView({ debateId }: Props) {
           }
         />
 
-        {showVerdict && debate.verdict && debate.confidence !== null && (
+        {showVerdict && d.verdict && d.confidence !== null && (
           <JudgeVerdict
-            verdict={debate.verdict as Verdict}
-            confidence={debate.confidence}
-            reasoning={judge?.body_md}
+            verdict={d.verdict as Verdict}
+            confidence={d.confidence}
+            reasoning={reasoning}
           />
         )}
 
@@ -127,25 +165,32 @@ export function DebateView({ debateId }: Props) {
         )}
       </div>
     );
-  })();
-
-  const statusText =
-    streamPhase.kind === "error"
-      ? streamPhase.reason
-      : streamPhase.kind === "done"
-        ? "done"
-        : streamPhase.kind === "streaming"
-          ? "streaming"
-          : "connecting";
-
-  const debate = debateQuery.data;
+  };
 
   return (
-    <>
-      <AppNav active="debate" />
-      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-8 px-4 pt-10 pb-20 md:px-6 md:pt-14">
-        {/* Header */}
-        <header className="flex flex-col gap-4">
+    <PageFrame
+      active="debate"
+      statusLeft={`paper-trail.dev ~/debates/${shortId}`}
+      statusRight={
+        <>
+          <span>SSE</span>
+          <span className="text-fg-faint">·</span>
+          <span
+            className={
+              streamPhase.kind === "error"
+                ? "text-error"
+                : streamPhase.kind === "done"
+                  ? "text-success"
+                  : "text-accent-cyan"
+            }
+          >
+            {statusText}
+          </span>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-8">
+        <header className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <Prompt kind="comment">~/debates/{shortId}.run</Prompt>
             {debate && (
@@ -154,7 +199,7 @@ export function DebateView({ debateId }: Props) {
               </Prompt>
             )}
           </div>
-          <h1 className="font-mono text-2xl font-semibold tracking-tight md:text-3xl">
+          <h1 className="font-mono text-xl font-semibold leading-tight tracking-tight md:text-2xl">
             {debate ? (
               <span className="text-foreground">{debate.claim}</span>
             ) : (
@@ -179,33 +224,21 @@ export function DebateView({ debateId }: Props) {
                   </span>
                 </>
               )}
+              {streamPhase.kind === "streaming" && (
+                <>
+                  <span className="text-fg-faint">·</span>
+                  <span className="inline-flex items-center gap-1.5 text-accent-cyan">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent-cyan pulse-ring" />
+                    live
+                  </span>
+                </>
+              )}
             </div>
           )}
         </header>
 
-        {body}
-      </main>
-
-      <StatusBar
-        left={`paper-trail.dev ~/debates/${shortId}`}
-        right={
-          <>
-            <span>SSE</span>
-            <span className="text-fg-faint">·</span>
-            <span
-              className={
-                streamPhase.kind === "error"
-                  ? "text-error"
-                  : streamPhase.kind === "done"
-                    ? "text-success"
-                    : "text-accent-cyan"
-              }
-            >
-              {statusText}
-            </span>
-          </>
-        }
-      />
-    </>
+        {renderBody()}
+      </div>
+    </PageFrame>
   );
 }

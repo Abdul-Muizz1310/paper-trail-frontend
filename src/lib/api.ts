@@ -45,7 +45,11 @@ export function useDebate(id: string, enabled = true) {
       return DebateSchema.parse(raw);
     },
     enabled,
+    // Every invalidate() should actually refetch — no stale caching
+    // while the debate is running.
     staleTime: 0,
+    gcTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -70,6 +74,21 @@ export function useCreateDebate() {
 export function useInvalidateDebate(id: string) {
   const qc = useQueryClient();
   return () => qc.invalidateQueries({ queryKey: debateKey(id) });
+}
+
+/**
+ * Merge a partial snapshot (from an SSE state event that inlined the
+ * rounds) into the query cache without a round-trip. Only applies if
+ * the current cache already has a full Debate object to merge into.
+ */
+export function usePatchDebate(id: string) {
+  const qc = useQueryClient();
+  return (patch: Partial<Debate>) => {
+    qc.setQueryData<Debate>(debateKey(id), (prev) => {
+      if (!prev) return prev;
+      return { ...prev, ...patch };
+    });
+  };
 }
 
 export { ApiError };

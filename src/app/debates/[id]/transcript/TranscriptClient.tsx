@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { TranscriptView } from "@/components/TranscriptView";
-import { AppNav } from "@/components/terminal/AppNav";
+import { PageFrame } from "@/components/terminal/PageFrame";
 import { Prompt } from "@/components/terminal/Prompt";
-import { StatusBar } from "@/components/terminal/StatusBar";
 import { TerminalWindow } from "@/components/terminal/TerminalWindow";
 import { useDebate } from "@/lib/api";
 
@@ -15,10 +14,19 @@ export function TranscriptClient({ debateId }: Props) {
   const shortId = debateId.slice(0, 8);
 
   return (
-    <>
-      <AppNav active="transcript" />
-      <main className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col gap-8 px-4 pt-10 pb-20 md:px-6 md:pt-14">
-        {/* Header */}
+    <PageFrame
+      active="transcript"
+      maxWidth="max-w-[1000px]"
+      statusLeft={`paper-trail.dev ~/debates/${shortId}/transcript.md`}
+      statusRight={
+        <>
+          <span>read-only</span>
+          <span className="text-fg-faint">·</span>
+          <span className="text-success">saved</span>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-6">
         <header className="flex flex-col gap-3">
           <Prompt kind="comment">~/debates/{shortId}/transcript.md</Prompt>
           <div className="flex items-center justify-between gap-3">
@@ -35,7 +43,6 @@ export function TranscriptClient({ debateId }: Props) {
           </div>
         </header>
 
-        {/* Body */}
         <TerminalWindow
           title="transcript.md"
           statusDot="green"
@@ -48,7 +55,7 @@ export function TranscriptClient({ debateId }: Props) {
               data-testid="transcript-loading"
               className="flex min-h-[200px] items-center justify-center font-mono text-sm text-fg-faint"
             >
-              <span className="text-accent-cyan mr-2">{"//"}</span>
+              <span className="mr-2 text-accent-cyan">{"//"}</span>
               loading transcript…
             </div>
           )}
@@ -75,18 +82,7 @@ export function TranscriptClient({ debateId }: Props) {
 
           {query.data && <TranscriptView markdown={query.data.transcript_md ?? ""} />}
         </TerminalWindow>
-      </main>
-
-      <StatusBar
-        left={`paper-trail.dev ~/debates/${shortId}/transcript.md`}
-        right={
-          <>
-            <span>read-only</span>
-            <span className="text-fg-faint">·</span>
-            <span className="text-success">saved</span>
-          </>
-        }
-      />
-    </>
+      </div>
+    </PageFrame>
   );
 }

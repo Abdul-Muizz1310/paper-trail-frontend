@@ -6,6 +6,8 @@ export type AgentPanelProps = {
   side: Extract<Side, "pro" | "con">;
   rounds: Round[];
   isActive: boolean;
+  /** Reveal newly arrived rounds with a typewriter effect. */
+  reveal?: boolean;
 };
 
 const CONFIG: Record<
@@ -15,16 +17,16 @@ const CONFIG: Record<
   pro: {
     title: "pro.agent.md",
     accent: "green",
-    empty: "// awaiting response…",
+    empty: "// thinking…",
   },
   con: {
     title: "con.agent.md",
     accent: "red",
-    empty: "// awaiting response…",
+    empty: "// thinking…",
   },
 };
 
-export function AgentPanel({ side, rounds, isActive }: AgentPanelProps) {
+export function AgentPanel({ side, rounds, isActive, reveal }: AgentPanelProps) {
   const filtered = rounds.filter((r) => r.side === side).sort((a, b) => a.index - b.index);
   const cfg = CONFIG[side];
 
@@ -38,12 +40,21 @@ export function AgentPanel({ side, rounds, isActive }: AgentPanelProps) {
       <div data-testid={`arena-column-${side}`} data-active={isActive}>
         {filtered.length === 0 ? (
           <div className="flex min-h-[160px] items-center justify-center font-mono text-xs text-fg-faint">
-            {cfg.empty}
+            <span>
+              {cfg.empty}
+              {isActive && (
+                <span className="ml-1 inline-block h-3 w-1.5 translate-y-0.5 bg-accent-cyan cursor-blink" />
+              )}
+            </span>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {filtered.map((r) => (
-              <EvidenceCard key={`${r.side}-${r.index}`} round={r} />
+            {filtered.map((r, i) => (
+              <EvidenceCard
+                key={`${r.side}-${r.index}`}
+                round={r}
+                reveal={reveal && i === filtered.length - 1}
+              />
             ))}
           </div>
         )}
