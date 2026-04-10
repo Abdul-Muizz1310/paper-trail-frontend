@@ -243,9 +243,7 @@ describe("useDebateStream — failure cases (negative space)", () => {
 
   it("F9 connect timeout is cleared when EventSource opens in time", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() =>
-      useDebateStream(DEBATE_ID, { connectTimeoutMs: 2_000 }),
-    );
+    const { result } = renderHook(() => useDebateStream(DEBATE_ID, { connectTimeoutMs: 2_000 }));
 
     // Open before timeout
     act(() => {

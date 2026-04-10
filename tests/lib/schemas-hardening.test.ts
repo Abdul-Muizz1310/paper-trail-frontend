@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  isTerminalErrorReason,
   DebateSchema,
-  StateEventSchema,
   DoneEventSchema,
+  isTerminalErrorReason,
+  StateEventSchema,
 } from "@/lib/schemas";
 
 describe("isTerminalErrorReason", () => {
@@ -36,9 +36,7 @@ describe("rounds schema tightening", () => {
       status: "done",
       verdict: "TRUE",
       confidence: 0.9,
-      rounds: [
-        { side: "proponent", round: 1, argument: "yes", evidence: [] },
-      ],
+      rounds: [{ side: "proponent", round: 1, argument: "yes", evidence: [] }],
       transcript_md: null,
       created_at: "2026-04-10T00:00:00Z",
     };

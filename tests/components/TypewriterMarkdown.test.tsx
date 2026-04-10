@@ -13,17 +13,13 @@ afterEach(() => {
 describe("TypewriterMarkdown", () => {
   it("P1 speed=0 reveals full text instantly and fires onDone", () => {
     const onDone = vi.fn();
-    render(
-      <TypewriterMarkdown markdown="Hello world" speed={0} onDone={onDone} />,
-    );
+    render(<TypewriterMarkdown markdown="Hello world" speed={0} onDone={onDone} />);
     expect(screen.getByText("Hello world")).toBeInTheDocument();
     expect(onDone).toHaveBeenCalledOnce();
   });
 
   it("P2 speed>0 progressively reveals text", () => {
-    render(
-      <TypewriterMarkdown markdown="abcdefghij" speed={10} />,
-    );
+    render(<TypewriterMarkdown markdown="abcdefghij" speed={10} />);
     // Initially only partial text should be shown (not the full string)
     // We can't check exact chars due to rounding, but cursor should be visible
     const cursor = document.querySelector("[aria-hidden]");
@@ -32,9 +28,7 @@ describe("TypewriterMarkdown", () => {
 
   it("P3 speed>0 calls onDone when fully revealed", async () => {
     const onDone = vi.fn();
-    render(
-      <TypewriterMarkdown markdown="abc" speed={100} onDone={onDone} />,
-    );
+    render(<TypewriterMarkdown markdown="abc" speed={100} onDone={onDone} />);
     // Run timers long enough to fully reveal 3 chars at 100 cps
     await act(async () => {
       vi.advanceTimersByTime(5_000);
@@ -43,9 +37,7 @@ describe("TypewriterMarkdown", () => {
   });
 
   it("P4 cursor is hidden after full reveal", async () => {
-    render(
-      <TypewriterMarkdown markdown="ab" speed={100} />,
-    );
+    render(<TypewriterMarkdown markdown="ab" speed={100} />);
     await act(async () => {
       vi.advanceTimersByTime(5_000);
     });
@@ -55,9 +47,7 @@ describe("TypewriterMarkdown", () => {
   });
 
   it("P5 renders markdown (bold, links) correctly", () => {
-    render(
-      <TypewriterMarkdown markdown="**bold** text" speed={0} />,
-    );
+    render(<TypewriterMarkdown markdown="**bold** text" speed={0} />);
     const bold = screen.getByText("bold");
     expect(bold.tagName).toBe("STRONG");
   });
@@ -71,18 +61,14 @@ describe("TypewriterMarkdown", () => {
 
   it("F1 interval is cleared on unmount", () => {
     const clearSpy = vi.spyOn(window, "clearInterval");
-    const { unmount } = render(
-      <TypewriterMarkdown markdown="long text here" speed={10} />,
-    );
+    const { unmount } = render(<TypewriterMarkdown markdown="long text here" speed={10} />);
     unmount();
     expect(clearSpy).toHaveBeenCalled();
     clearSpy.mockRestore();
   });
 
   it("F2 shorter replacement text snaps immediately", async () => {
-    const { rerender } = render(
-      <TypewriterMarkdown markdown="abcdefghij" speed={0} />,
-    );
+    const { rerender } = render(<TypewriterMarkdown markdown="abcdefghij" speed={0} />);
     // Rerender with shorter text
     rerender(<TypewriterMarkdown markdown="abc" speed={0} />);
     await act(() => Promise.resolve());

@@ -6,7 +6,8 @@ import { TranscriptClient } from "@/app/debates/[id]/transcript/TranscriptClient
 // ---------- api mock ----------
 const mockUseDebate = vi.fn();
 vi.mock("@/lib/api", () => ({
-  useDebate: (...args: any[]) => mockUseDebate(...args),
+  // biome-ignore lint/suspicious/noExplicitAny: mock passthrough
+  useDebate: (...args: unknown[]) => mockUseDebate(...args),
 }));
 
 // ---------- next/link mock (render as plain <a>) ----------
@@ -95,9 +96,6 @@ describe("TranscriptClient", () => {
     });
     render(<TranscriptClient debateId={DEBATE_ID} />, { wrapper });
     const backLink = screen.getByText("cd ..");
-    expect(backLink.closest("a")).toHaveAttribute(
-      "href",
-      `/debates/${DEBATE_ID}`,
-    );
+    expect(backLink.closest("a")).toHaveAttribute("href", `/debates/${DEBATE_ID}`);
   });
 });

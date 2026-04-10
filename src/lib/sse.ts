@@ -6,9 +6,9 @@ import {
   type DoneEvent,
   DoneEventSchema,
   ErrorEventSchema,
+  isTerminalErrorReason,
   type StateEvent,
   StateEventSchema,
-  isTerminalErrorReason,
 } from "@/lib/schemas";
 
 export type StreamPhase =
@@ -200,7 +200,7 @@ export function useDebateStream(
       terminatedRef.current = true;
       teardown();
     };
-  }, [debateId, maxRetries, backoffMs]);
+  }, [debateId, maxRetries, backoffMs, connectTimeoutMs]);
 
   const close = () => {
     terminatedRef.current = true;

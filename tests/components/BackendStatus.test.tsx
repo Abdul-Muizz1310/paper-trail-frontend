@@ -26,9 +26,7 @@ describe("BackendStatus", () => {
   });
 
   it("P2 shows warm + latency on fast 200 response", async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve(new Response("{}", { status: 200 })),
-    );
+    globalThis.fetch = vi.fn(() => Promise.resolve(new Response("{}", { status: 200 })));
     render(<BackendStatus />);
     // Let the microtask queue flush the .then()
     await act(() => Promise.resolve());
@@ -56,18 +54,14 @@ describe("BackendStatus", () => {
   });
 
   it("P5 shows down when response is not ok (e.g. 500)", async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve(new Response("", { status: 500 })),
-    );
+    globalThis.fetch = vi.fn(() => Promise.resolve(new Response("", { status: 500 })));
     render(<BackendStatus />);
     await act(() => Promise.resolve());
     expect(screen.getByText(/unreachable/)).toBeInTheDocument();
   });
 
   it("F1 cold timer is cleared when fast response arrives", async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve(new Response("{}", { status: 200 })),
-    );
+    globalThis.fetch = vi.fn(() => Promise.resolve(new Response("{}", { status: 200 })));
     render(<BackendStatus />);
     await act(() => Promise.resolve());
     // After warm is set, advancing past 3s should NOT show cold

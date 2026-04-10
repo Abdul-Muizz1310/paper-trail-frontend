@@ -35,9 +35,7 @@ function mockFetchOk(body: unknown) {
 }
 
 function mockFetchError(status: number) {
-  (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
-    new Response("", { status }),
-  );
+  (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(new Response("", { status }));
 }
 
 /* ---------------------------------------------------------------
@@ -105,34 +103,31 @@ describe("useDebate", () => {
   it("P1 fetches and parses a debate via Zod", async () => {
     mockFetchOk(DEBATE_RESPONSE);
     const { wrapper } = createWrapper();
-    const { result } = renderHook(
-      () => useDebate("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useDebate("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"), {
+      wrapper,
+    });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data!.claim).toBe("The sky is blue");
+    const data = result.current.data;
+    expect(data).toBeDefined();
+    expect(data?.claim).toBe("The sky is blue");
     // rounds should be parsed through parseRounds
-    expect(result.current.data!.rounds[0].side).toBe("pro");
-    expect(result.current.data!.rounds[0].body_md).toBe("yes");
+    expect(data?.rounds[0].side).toBe("pro");
+    expect(data?.rounds[0].body_md).toBe("yes");
   });
 
   it("F1 throws ApiError on non-200 status", async () => {
     mockFetchError(500);
     const { wrapper } = createWrapper();
-    const { result } = renderHook(
-      () => useDebate("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useDebate("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"), {
+      wrapper,
+    });
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeInstanceOf(ApiError);
   });
 
   it("P2 disabled when enabled=false", () => {
     const { wrapper } = createWrapper();
-    const { result } = renderHook(
-      () => useDebate("abc", false),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useDebate("abc", false), { wrapper });
     // Should not be fetching
     expect(result.current.fetchStatus).toBe("idle");
   });
@@ -198,10 +193,11 @@ describe("usePatchDebate", () => {
     result.current({ verdict: "TRUE", confidence: 0.9 });
 
     const updated = qc.getQueryData<Debate>(debateKey(id));
-    expect(updated!.verdict).toBe("TRUE");
-    expect(updated!.confidence).toBe(0.9);
+    expect(updated).toBeDefined();
+    expect(updated?.verdict).toBe("TRUE");
+    expect(updated?.confidence).toBe(0.9);
     // Unchanged fields preserved
-    expect(updated!.claim).toBe("x");
+    expect(updated?.claim).toBe("x");
   });
 
   it("F1 no-ops when cache is empty", () => {
