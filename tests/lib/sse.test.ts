@@ -221,4 +221,59 @@ describe("useDebateStream — failure cases (negative space)", () => {
     expect(first.readyState).toBe(2);
     expect(FakeEventSource.instances.length).toBe(2);
   });
+
+  it("F8 connect timeout fires when EventSource never opens", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() =>
+      useDebateStream(DEBATE_ID, { maxRetries: 0, connectTimeoutMs: 1_000 }),
+    );
+    expect(result.current.phase.kind).toBe("connecting");
+
+    // Don't call openNow() — simulate hanging connection
+    act(() => {
+      vi.advanceTimersByTime(1_100);
+    });
+
+    // After timeout + 0 retries, should error
+    expect(result.current.phase.kind).toBe("error");
+    if (result.current.phase.kind === "error") {
+      expect(result.current.phase.reason).toBe("max_retries_exceeded");
+    }
+  });
+
+  it("F9 connect timeout is cleared when EventSource opens in time", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() =>
+      useDebateStream(DEBATE_ID, { connectTimeoutMs: 2_000 }),
+    );
+
+    // Open before timeout
+    act(() => {
+      vi.advanceTimersByTime(500);
+      FakeEventSource.last().openNow();
+    });
+
+    // Advance past the timeout threshold — should NOT disconnect
+    act(() => {
+      vi.advanceTimersByTime(3_000);
+    });
+    expect(result.current.phase.kind).not.toBe("error");
+  });
+
+  it("F10 error event with reason:gone is also terminal (via isTerminalErrorReason)", async () => {
+    const { result } = renderHook(() => useDebateStream(DEBATE_ID));
+    const es = FakeEventSource.last();
+    act(() => {
+      es.openNow();
+      es.emit("error", { reason: "gone" });
+    });
+    await waitFor(() => {
+      expect(result.current.phase.kind).toBe("error");
+      if (result.current.phase.kind === "error") {
+        expect(result.current.phase.reason).toBe("not_found");
+      }
+    });
+    // Terminal — no retry
+    expect(FakeEventSource.instances.length).toBe(1);
+  });
 });

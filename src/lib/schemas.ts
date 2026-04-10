@@ -115,7 +115,7 @@ export const DebateSchema = z
     status: z.string(),
     verdict: VerdictSchema.nullable(),
     confidence: z.number().nullable(),
-    rounds: z.unknown(),
+    rounds: z.array(z.unknown()).catch([]),
     transcript_md: z.string().nullable(),
     created_at: z.string(),
   })
@@ -141,7 +141,9 @@ export const StateEventSchema = z.object({
   rounds_count: z.number().int().nonnegative(),
   // New in backend v0.1.1: rounds[] inlined so the client doesn't
   // have to round-trip a GET on every tick. Optional for back-compat.
-  rounds: z.unknown().optional(),
+  // Accepts unknown[] (array of any shape) — parseRounds() handles
+  // per-item validation and drops malformed entries.
+  rounds: z.array(z.unknown()).optional(),
 });
 export type StateEvent = z.infer<typeof StateEventSchema>;
 
@@ -151,15 +153,23 @@ export const DoneEventSchema = z.object({
   verdict: VerdictSchema.nullable().optional(),
   confidence: z.number().nullable().optional(),
   rounds_count: z.number().int().nonnegative().optional(),
-  rounds: z.unknown().optional(),
+  rounds: z.array(z.unknown()).optional(),
   reason: z.string().optional(),
 });
 export type DoneEvent = z.infer<typeof DoneEventSchema>;
+
+/** Terminal reasons that should NOT trigger a reconnect. */
+const TERMINAL_ERROR_REASONS = ["not_found", "gone"] as const;
 
 export const ErrorEventSchema = z.object({
   reason: z.string(),
 });
 export type ErrorEvent = z.infer<typeof ErrorEventSchema>;
+
+/** Check if an error reason is terminal (no retry). */
+export function isTerminalErrorReason(reason: string): boolean {
+  return (TERMINAL_ERROR_REASONS as readonly string[]).includes(reason);
+}
 
 /* ----------------------- Misc helpers ----------------------- */
 
