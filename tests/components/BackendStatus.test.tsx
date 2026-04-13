@@ -72,7 +72,35 @@ describe("BackendStatus", () => {
     expect(screen.queryByText(/waking up/)).toBeNull();
   });
 
-  it("F2 abort controller cancels fetch on unmount", () => {
+  it("F2 cold timer no-ops if status already moved past checking (warm)", async () => {
+    // Fetch resolves fast (→ 'warm' + clearTimeout), then advance past cold threshold
+    globalThis.fetch = vi.fn(() => Promise.resolve(new Response("{}", { status: 200 })));
+    render(<BackendStatus />);
+    await act(() => Promise.resolve());
+    expect(screen.getByText("OK")).toBeInTheDocument();
+    // Advance past cold threshold — cold timer was cleared, status stays warm
+    await act(async () => {
+      vi.advanceTimersByTime(4_000);
+    });
+    expect(screen.getByText("OK")).toBeInTheDocument();
+    expect(screen.queryByText(/waking up/)).toBeNull();
+  });
+
+  it("F2b cold timer no-ops if status already moved to down", async () => {
+    // Fetch rejects immediately (→ 'down'), then cold timer fires — status stays 'down'
+    globalThis.fetch = vi.fn(() => Promise.reject(new Error("network")));
+    render(<BackendStatus />);
+    await act(() => Promise.resolve());
+    expect(screen.getByText(/unreachable/)).toBeInTheDocument();
+    // Now advance past cold threshold — cold timer still fires, but setState is no-op
+    await act(async () => {
+      vi.advanceTimersByTime(4_000);
+    });
+    expect(screen.getByText(/unreachable/)).toBeInTheDocument();
+    expect(screen.queryByText(/waking up/)).toBeNull();
+  });
+
+  it("F3 abort controller cancels fetch on unmount", () => {
     const abortSpy = vi.spyOn(AbortController.prototype, "abort");
     globalThis.fetch = vi.fn(() => new Promise<Response>(() => {}));
     const { unmount } = render(<BackendStatus />);

@@ -34,4 +34,21 @@ describe("DebateArena", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/boom/);
     expect(screen.queryByTestId("arena-column-pro")).not.toBeInTheDocument();
   });
+
+  it("F2 error phase without errorMessage shows default fallback", () => {
+    render(<DebateArena pro={[]} con={[]} phase="error" />);
+    expect(screen.getByRole("alert")).toHaveTextContent(/something went wrong/i);
+  });
+
+  it("P3 done phase renders agent panels without active state", () => {
+    render(
+      <DebateArena
+        pro={[round(0, "pro")]}
+        con={[round(0, "con")]}
+        phase="done"
+      />,
+    );
+    const proCol = screen.getByTestId("arena-column-pro");
+    expect(proCol).toHaveAttribute("data-active", "false");
+  });
 });

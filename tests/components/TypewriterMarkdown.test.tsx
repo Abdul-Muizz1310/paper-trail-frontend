@@ -74,4 +74,25 @@ describe("TypewriterMarkdown", () => {
     await act(() => Promise.resolve());
     expect(screen.getByText("abc")).toBeInTheDocument();
   });
+
+  it("F3 shorter replacement text with speed>0 snaps to new length", async () => {
+    // Start with long text at speed=0 so revealed = 10 instantly
+    const { rerender } = render(<TypewriterMarkdown markdown="abcdefghij" speed={0} />);
+    // Now rerender with shorter text and speed>0 — hits markdown.length < revealed branch
+    rerender(<TypewriterMarkdown markdown="abc" speed={100} />);
+    await act(() => Promise.resolve());
+    expect(screen.getByText("abc")).toBeInTheDocument();
+  });
+
+  it("F4 when already fully revealed, onDone fires without restarting animation", async () => {
+    const onDone = vi.fn();
+    // speed=0 instantly reveals. Then rerender with same length triggers revealed >= markdown.length
+    const { rerender } = render(<TypewriterMarkdown markdown="abc" speed={0} onDone={onDone} />);
+    expect(onDone).toHaveBeenCalledOnce();
+    onDone.mockClear();
+    // Rerender with same text — revealed already equals markdown.length
+    rerender(<TypewriterMarkdown markdown="abc" speed={100} onDone={onDone} />);
+    await act(() => Promise.resolve());
+    expect(onDone).toHaveBeenCalledOnce();
+  });
 });

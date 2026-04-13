@@ -17,11 +17,12 @@ vi.mock("next/navigation", () => ({
 
 // ---------- api mock ----------
 const mockMutateAsync = vi.fn();
+let mockIsError = false;
 vi.mock("@/lib/api", () => ({
   useCreateDebate: () => ({
     mutateAsync: mockMutateAsync,
     isPending: false,
-    isError: false,
+    isError: mockIsError,
     error: null,
   }),
 }));
@@ -54,7 +55,15 @@ describe("HomeClaimForm", () => {
     });
   });
 
-  it("F1 on mutation error, router.push is NOT called", async () => {
+  it("F1 when isError is true, error message and defaultClaim are passed to ClaimInput", () => {
+    mockIsError = true;
+    render(<HomeClaimForm />, { wrapper });
+    // The error prop renders as role=alert inside ClaimInput
+    expect(screen.getByRole("alert")).toHaveTextContent(/couldn.t start the debate/i);
+    mockIsError = false;
+  });
+
+  it("F2 on mutation error, router.push is NOT called", async () => {
     mockPush.mockClear();
     mockMutateAsync.mockRejectedValueOnce(new Error("fail"));
 

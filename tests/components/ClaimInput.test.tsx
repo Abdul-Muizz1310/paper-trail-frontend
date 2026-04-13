@@ -33,7 +33,21 @@ describe("ClaimInput", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/exploded/i);
   });
 
-  it("F3 isPending disables the textbox and button", () => {
+  it("F3 claim exceeding 2000 chars shows length error and does not call onSubmit", async () => {
+    const onSubmit = vi.fn();
+    render(<ClaimInput onSubmit={onSubmit} isPending={false} />);
+    const textarea = screen.getByRole("textbox", { name: /claim/i });
+    // Fire a change event with a very long string (faster than typing 2001 chars)
+    await userEvent.clear(textarea);
+    // Use fireEvent for perf — typing 2001 chars via userEvent is slow
+    const { fireEvent } = await import("@testing-library/react");
+    fireEvent.change(textarea, { target: { value: "x".repeat(2001) } });
+    await userEvent.click(screen.getByRole("button", { name: /submit|debate|start/i }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/2000/);
+  });
+
+  it("F4 isPending disables the textbox and button", () => {
     render(<ClaimInput onSubmit={vi.fn()} isPending={true} defaultClaim="hi" />);
     expect(screen.getByRole("textbox", { name: /claim/i })).toBeDisabled();
     // When pending the button label switches to "compiling…"

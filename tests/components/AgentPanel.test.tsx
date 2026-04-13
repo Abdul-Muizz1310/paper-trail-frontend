@@ -23,4 +23,20 @@ describe("AgentPanel", () => {
     render(<AgentPanel side="pro" rounds={[r(0, "pro"), r(1, "con")]} isActive={false} />);
     expect(screen.getAllByTestId("evidence-card")).toHaveLength(1);
   });
+
+  it("P3 empty rounds + isActive shows empty placeholder with cursor blink", () => {
+    render(<AgentPanel side="pro" rounds={[]} isActive={true} />);
+    expect(screen.queryAllByTestId("evidence-card")).toHaveLength(0);
+    // The "// thinking…" text should be present
+    expect(screen.getByText(/thinking/)).toBeInTheDocument();
+    // The cursor blink span should be present (isActive = true)
+    expect(document.querySelector(".cursor-blink")).not.toBeNull();
+  });
+
+  it("P4 empty rounds + isActive=false shows empty placeholder without cursor", () => {
+    render(<AgentPanel side="con" rounds={[]} isActive={false} />);
+    expect(screen.getByText(/thinking/)).toBeInTheDocument();
+    // No cursor-blink when not active
+    expect(document.querySelector(".cursor-blink")).toBeNull();
+  });
 });
