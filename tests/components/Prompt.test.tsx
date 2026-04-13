@@ -43,9 +43,7 @@ describe("Prompt", () => {
   });
 
   it("P7 className is applied to the root element", () => {
-    const { container } = render(
-      <Prompt className="extra-class">x</Prompt>,
-    );
+    const { container } = render(<Prompt className="extra-class">x</Prompt>);
     expect(container.firstChild).toHaveClass("extra-class");
   });
 });

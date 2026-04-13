@@ -112,32 +112,24 @@ describe("rounds schema tightening", () => {
 
 describe("parseRounds — side normalisation", () => {
   it("P1 maps 'opponent' to 'con'", () => {
-    const rounds = parseRounds([
-      { side: "opponent", round: 1, argument: "arg", evidence: [] },
-    ]);
+    const rounds = parseRounds([{ side: "opponent", round: 1, argument: "arg", evidence: [] }]);
     expect(rounds).toHaveLength(1);
     expect(rounds[0].side).toBe("con");
   });
 
   it("P2 maps 'skeptic' to 'con'", () => {
-    const rounds = parseRounds([
-      { side: "skeptic", round: 1, argument: "arg", evidence: [] },
-    ]);
+    const rounds = parseRounds([{ side: "skeptic", round: 1, argument: "arg", evidence: [] }]);
     expect(rounds[0].side).toBe("con");
   });
 
   it("P3 maps 'judge' to 'judge'", () => {
-    const rounds = parseRounds([
-      { side: "judge", round: 1, argument: "verdict", evidence: [] },
-    ]);
+    const rounds = parseRounds([{ side: "judge", round: 1, argument: "verdict", evidence: [] }]);
     expect(rounds[0].side).toBe("judge");
   });
 
   it("F1 unknown side is dropped with console.warn in non-production", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const rounds = parseRounds([
-      { side: "alien", round: 1, argument: "arg", evidence: [] },
-    ]);
+    const rounds = parseRounds([{ side: "alien", round: 1, argument: "arg", evidence: [] }]);
     expect(rounds).toHaveLength(0);
     expect(warnSpy).toHaveBeenCalledWith("[paper-trail] unknown side", "alien");
     warnSpy.mockRestore();
@@ -147,9 +139,7 @@ describe("parseRounds — side normalisation", () => {
     const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = "production";
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const rounds = parseRounds([
-      { side: "alien", round: 1, argument: "arg", evidence: [] },
-    ]);
+    const rounds = parseRounds([{ side: "alien", round: 1, argument: "arg", evidence: [] }]);
     expect(rounds).toHaveLength(0);
     expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();
@@ -157,9 +147,7 @@ describe("parseRounds — side normalisation", () => {
   });
 
   it("F2 null side is dropped", () => {
-    const rounds = parseRounds([
-      { side: null, round: 1, argument: "arg", evidence: [] },
-    ]);
+    const rounds = parseRounds([{ side: null, round: 1, argument: "arg", evidence: [] }]);
     expect(rounds).toHaveLength(0);
   });
 
@@ -175,31 +163,23 @@ describe("parseRounds — side normalisation", () => {
   });
 
   it("F5 item with missing round/index is dropped", () => {
-    const rounds = parseRounds([
-      { side: "pro", argument: "arg", evidence: [] },
-    ]);
+    const rounds = parseRounds([{ side: "pro", argument: "arg", evidence: [] }]);
     expect(rounds).toHaveLength(0);
   });
 
   it("F6 item with negative round is dropped", () => {
-    const rounds = parseRounds([
-      { side: "pro", round: 0, argument: "arg", evidence: [] },
-    ]);
+    const rounds = parseRounds([{ side: "pro", round: 0, argument: "arg", evidence: [] }]);
     // round: 0 → index: -1 → dropped
     expect(rounds).toHaveLength(0);
   });
 
   it("P4 uses body_md when argument is absent", () => {
-    const rounds = parseRounds([
-      { side: "pro", round: 1, body_md: "from body_md", evidence: [] },
-    ]);
+    const rounds = parseRounds([{ side: "pro", round: 1, body_md: "from body_md", evidence: [] }]);
     expect(rounds[0].body_md).toBe("from body_md");
   });
 
   it("P5 uses index field when round is absent", () => {
-    const rounds = parseRounds([
-      { side: "pro", index: 2, argument: "arg", evidence: [] },
-    ]);
+    const rounds = parseRounds([{ side: "pro", index: 2, argument: "arg", evidence: [] }]);
     expect(rounds[0].index).toBe(2);
   });
 
@@ -261,9 +241,7 @@ describe("parseRounds — side normalisation", () => {
   });
 
   it("P12 neither argument nor body_md — body defaults to empty string", () => {
-    const rounds = parseRounds([
-      { side: "pro", round: 1, evidence: [] },
-    ]);
+    const rounds = parseRounds([{ side: "pro", round: 1, evidence: [] }]);
     expect(rounds[0].body_md).toBe("");
   });
 
@@ -275,9 +253,7 @@ describe("parseRounds — side normalisation", () => {
   });
 
   it("P13 non-array evidence field is treated as empty", () => {
-    const rounds = parseRounds([
-      { side: "pro", round: 1, argument: "a", evidence: "not-array" },
-    ]);
+    const rounds = parseRounds([{ side: "pro", round: 1, argument: "a", evidence: "not-array" }]);
     expect(rounds[0].evidence).toEqual([]);
   });
 

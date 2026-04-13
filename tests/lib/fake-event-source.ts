@@ -33,7 +33,7 @@ export class FakeEventSource {
 
   addEventListener(type: string, listener: Listener): void {
     if (!this.listeners.has(type)) this.listeners.set(type, new Set());
-    this.listeners.get(type)!.add(listener);
+    this.listeners.get(type)?.add(listener);
   }
 
   removeEventListener(type: string, listener: Listener): void {

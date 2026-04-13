@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { DebateSchema, isTerminalErrorReason, StateEventSchema } from "@/lib/schemas";
 import { extractJudgeReasoning } from "@/lib/transcript";
 
 describe("extractJudgeReasoning", () => {

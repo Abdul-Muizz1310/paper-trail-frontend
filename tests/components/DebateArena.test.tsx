@@ -41,13 +41,7 @@ describe("DebateArena", () => {
   });
 
   it("P3 done phase renders agent panels without active state", () => {
-    render(
-      <DebateArena
-        pro={[round(0, "pro")]}
-        con={[round(0, "con")]}
-        phase="done"
-      />,
-    );
+    render(<DebateArena pro={[round(0, "pro")]} con={[round(0, "con")]} phase="done" />);
     const proCol = screen.getByTestId("arena-column-pro");
     expect(proCol).toHaveAttribute("data-active", "false");
   });

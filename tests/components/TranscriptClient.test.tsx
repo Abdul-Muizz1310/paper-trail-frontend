@@ -6,7 +6,6 @@ import { TranscriptClient } from "@/app/debates/[id]/transcript/TranscriptClient
 // ---------- api mock ----------
 const mockUseDebate = vi.fn();
 vi.mock("@/lib/api", () => ({
-  // biome-ignore lint/suspicious/noExplicitAny: mock passthrough
   useDebate: (...args: unknown[]) => mockUseDebate(...args),
 }));
 

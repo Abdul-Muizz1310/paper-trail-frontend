@@ -304,7 +304,7 @@ describe("useDebateStream — failure cases (negative space)", () => {
 
   it("F11a connect after terminated is a no-op", () => {
     vi.useFakeTimers();
-    const { result, unmount } = renderHook(() => useDebateStream(DEBATE_ID, { maxRetries: 3 }));
+    const { unmount } = renderHook(() => useDebateStream(DEBATE_ID, { maxRetries: 3 }));
     // Unmount sets terminatedRef = true
     unmount();
     const countBefore = FakeEventSource.instances.length;
@@ -411,7 +411,9 @@ describe("useDebateStream — failure cases (negative space)", () => {
       es.openNow();
       // Emit a state event that will have undefined as data (no JSON.stringify)
       const ev = new MessageEvent("state", { data: undefined as unknown as string });
-      es["listeners"].get("state")?.forEach((l: (ev: Event) => void) => l(ev));
+      es.listeners.get("state")?.forEach((l: (ev: Event) => void) => {
+        l(ev);
+      });
     });
     expect(onStateChange).not.toHaveBeenCalled();
     expect(result.current.phase.kind).not.toBe("error");
