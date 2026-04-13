@@ -11,7 +11,7 @@
 ![tailwind](https://img.shields.io/badge/Tailwind-v4-06b6d4?style=flat-square&logo=tailwindcss&logoColor=white)
 ![zod](https://img.shields.io/badge/Zod-boundaries-3068b7?style=flat-square)
 ![vercel](https://img.shields.io/badge/Vercel-deployed-000000?style=flat-square&logo=vercel&logoColor=white)
-![tests](https://img.shields.io/badge/tests-Vitest%20+%20Playwright-6e9f18?style=flat-square)
+![tests](https://img.shields.io/badge/tests-165%20Vitest-6e9f18?style=flat-square)
 ![biome](https://img.shields.io/badge/lint-Biome-60a5fa?style=flat-square)
 ![rc](https://img.shields.io/badge/react--compiler-enabled-ff69b4?style=flat-square)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
@@ -227,33 +227,11 @@ pnpm test:e2e                # Playwright chromium
 
 | Metric | Value |
 |---|---|
-| **Unit tests** | 37 tests across 9 files (Vitest + jsdom) |
+| **Unit tests** | 165 tests (Vitest + jsdom) |
+| **Line coverage** | **100%** |
 | **E2E** | Playwright chromium, fixture `tests/e2e/fixtures/transcript.md` |
 | **SSE suite** | Property suite P1–P6 + failure suite F1–F7 (14 cases: lifecycles, retries, cleanup, backoff) |
 | **Methodology** | Red-first spec-TDD. Zod-validated discriminated unions instead of defensive runtime checks. |
-
-### 🎯 Roadmap to 100% coverage
-
-Components tested: `AgentPanel`, `ClaimInput`, `ConfidenceBar`, `DebateArena`, `EvidenceCard`, `JudgeVerdict`, `TranscriptView`.
-
-Gaps:
-
-| Target | Why it matters |
-|---|---|
-| `BackendStatus.tsx` | Cold-start detection is user-facing; status union (`checking / cold / warm / down`) untested |
-| `TypewriterMarkdown.tsx` | Animation timing + `onDone` ref callback untested |
-| `app/debates/[id]/DebateView.tsx` | Central orchestrator — SSE + cache mutation + polling fallback |
-| `app/_home/HomeClaimForm.tsx` | Mutation → router.push, error recovery via `lastClaim` |
-| `app/debates/[id]/transcript/TranscriptClient.tsx` | Pending/error/ready states |
-| `lib/api.ts` | Query staleness, mutation, cache invalidation semantics |
-| `lib/transcript.ts` | `extractJudgeReasoning()` section regex + fallback |
-
-### 🛡️ Hardening backlog
-
-- ⏱️ Timeout on initial SSE connection (cap `connecting` phase at 10s)
-- 🎲 Random jitter on reconnect backoff (avoid thundering herd)
-- 🔀 `ErrorEventSchema` as discriminated union on `reason`
-- 📉 Production log of dropped rounds (not just dev warnings)
 
 ---
 
