@@ -136,14 +136,13 @@ describe("parseRounds — side normalisation", () => {
   });
 
   it("F1b unknown side in production does NOT console.warn", () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const rounds = parseRounds([{ side: "alien", round: 1, argument: "arg", evidence: [] }]);
     expect(rounds).toHaveLength(0);
     expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();
-    process.env.NODE_ENV = originalEnv;
+    vi.unstubAllEnvs();
   });
 
   it("F2 null side is dropped", () => {

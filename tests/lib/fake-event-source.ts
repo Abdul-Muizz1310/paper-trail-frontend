@@ -23,7 +23,8 @@ export class FakeEventSource {
   onopen: Listener | null = null;
   onerror: Listener | null = null;
   onmessage: Listener | null = null;
-  private listeners = new Map<string, Set<Listener>>();
+  /* @internal — exposed for test-only direct access */
+  readonly _listeners = new Map<string, Set<Listener>>();
 
   constructor(url: string) {
     this.url = url;
@@ -32,12 +33,12 @@ export class FakeEventSource {
   }
 
   addEventListener(type: string, listener: Listener): void {
-    if (!this.listeners.has(type)) this.listeners.set(type, new Set());
-    this.listeners.get(type)?.add(listener);
+    if (!this._listeners.has(type)) this._listeners.set(type, new Set());
+    this._listeners.get(type)?.add(listener);
   }
 
   removeEventListener(type: string, listener: Listener): void {
-    this.listeners.get(type)?.delete(listener);
+    this._listeners.get(type)?.delete(listener);
   }
 
   close(): void {
@@ -50,7 +51,7 @@ export class FakeEventSource {
     this.readyState = 1;
     const ev = new Event("open");
     this.onopen?.(ev);
-    this.listeners.get("open")?.forEach((l) => {
+    this._listeners.get("open")?.forEach((l) => {
       l(ev);
     });
   }
@@ -59,7 +60,7 @@ export class FakeEventSource {
     const ev = new MessageEvent(name, {
       data: typeof data === "string" ? data : JSON.stringify(data),
     });
-    this.listeners.get(name)?.forEach((l) => {
+    this._listeners.get(name)?.forEach((l) => {
       l(ev);
     });
     if (name === "message") this.onmessage?.(ev);
@@ -69,7 +70,7 @@ export class FakeEventSource {
     this.readyState = 2;
     const ev = new Event("error");
     this.onerror?.(ev);
-    this.listeners.get("error")?.forEach((l) => {
+    this._listeners.get("error")?.forEach((l) => {
       l(ev);
     });
   }

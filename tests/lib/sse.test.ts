@@ -411,7 +411,7 @@ describe("useDebateStream — failure cases (negative space)", () => {
       es.openNow();
       // Emit a state event that will have undefined as data (no JSON.stringify)
       const ev = new MessageEvent("state", { data: undefined as unknown as string });
-      es.listeners.get("state")?.forEach((l: (ev: Event) => void) => {
+      es._listeners.get("state")?.forEach((l: (ev: Event) => void) => {
         l(ev);
       });
     });
