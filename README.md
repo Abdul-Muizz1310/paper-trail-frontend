@@ -228,9 +228,9 @@ pnpm test:e2e                # Playwright chromium
 | Metric | Value |
 |---|---|
 | **Unit tests** | 165 tests (Vitest + jsdom) |
-| **Line coverage** | **100%** |
+| **Line coverage** | **80.19%** (324/404 lines over all `src/`; 100% over the modules the unit suite exercises) |
 | **E2E** | Playwright chromium, fixture `tests/e2e/fixtures/transcript.md` |
-| **SSE suite** | Property suite P1–P6 + failure suite F1–F7 (14 cases: lifecycles, retries, cleanup, backoff) |
+| **SSE suite** | 28 cases (`tests/lib/sse.test.ts`): 5 property cases (P1–P3, P5, P6) + 23 failure cases (F1–F12 and sub-variants: lifecycles, retries, cleanup, backoff) |
 | **Methodology** | Red-first spec-TDD. Zod-validated discriminated unions instead of defensive runtime checks. |
 
 ---
@@ -239,7 +239,7 @@ pnpm test:e2e                # Playwright chromium
 
 | Principle | How it shows up |
 |---|---|
-| 🧪 **Spec-TDD** | SSE hook shipped with P1–P6 / F1–F7 test matrix before implementation landed. |
+| 🧪 **Spec-TDD** | SSE hook shipped with a 28-case property/failure test matrix (P1–P3, P5, P6 + F1–F12 with sub-variants) before implementation landed. |
 | 🛡️ **Negative-space programming** | Discriminated unions for `StreamPhase`, `BackendStatus`, `DebatePhase`. Malformed SSE events dropped silently. Unknown sides return `null` via `normaliseSide()`. |
 | 🧬 **Parse, don't validate** | Zod at every edge: env, REST, SSE. No `any`, no unsafe casts, no optional-chain bug masks. |
 | 🏗️ **Separation of concerns** | `app/` thin · `components/` dumb · `lib/` owns side effects. |
