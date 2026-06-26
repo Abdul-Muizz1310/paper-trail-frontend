@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test --run
+      - run: pnpm test --run --coverage
 
   build:
     needs: test
