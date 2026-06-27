@@ -11,7 +11,8 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     coverage: {
       provider: "v8",
-      all: true,
+      // `include` already counts every src file (vitest 4 makes the old
+      // `all: true` the default; the explicit key no longer typechecks).
       include: ["src/**"],
       thresholds: { lines: 75, statements: 75, branches: 70, functions: 65 },
     },
