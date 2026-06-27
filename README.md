@@ -157,7 +157,7 @@ src/
 | **Framework** | Next.js 16 (App Router, React Server Components, React Compiler) |
 | **UI** | React 19 · TypeScript strict |
 | **Styling** | Tailwind CSS v4 · shadcn/ui · radix-ui · lucide · Framer Motion |
-| **State** | TanStack Query v5 · Zustand |
+| **State** | TanStack Query v5 (server cache, patched live by the SSE consumer) |
 | **Validation** | Zod (env, API, SSE) |
 | **Markdown** | react-markdown + remark-gfm |
 | **Testing** | Vitest + Testing Library (unit) · Playwright (e2e) |

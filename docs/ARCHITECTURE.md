@@ -8,12 +8,12 @@ flowchart LR
     Home -->|POST /debates| API[[paper-trail-backend<br/>FastAPI + LangGraph]]
     API -->|debate_id| DebatePage[/"/debates/[id]" page/]
     DebatePage -->|SSE /debates/:id/stream| Hook[useDebateStream hook]
-    Hook -->|validated events| Store[(Zustand store)]
-    Store --> Arena[DebateArena]
+    Hook -->|patch + invalidate| Query[(TanStack Query cache)]
+    Query --> Arena[DebateArena]
     Arena --> ProPanel[Pro AgentPanel]
     Arena --> ConPanel[Con AgentPanel]
-    Store --> Verdict[JudgeVerdict]
-    Store --> Confidence[ConfidenceBar]
+    Query --> Verdict[JudgeVerdict]
+    Query --> Confidence[ConfidenceBar]
     DebatePage -->|link| Transcript[/"/debates/[id]/transcript"/]
     Transcript -->|GET /debates/:id| API
 ```
@@ -26,8 +26,8 @@ flowchart LR
 | **Home widgets** | `app/_home/` | Co-located client components for the claim input page |
 | **Components** | `AgentPanel`, `DebateArena`, `ClaimInput`, `ConfidenceBar`, `EvidenceCard`, `JudgeVerdict`, `TranscriptView`, `TypewriterMarkdown`, `BackendStatus` | Presentational components with typed props, loading + error states |
 | **Terminal UI** | `components/terminal/` | Terminal-themed wrapper components for the debate aesthetic |
-| **Hooks / state** | `lib/sse.ts` (SSE consumer with reconnect + backoff), `lib/store.ts` (Zustand) | Streaming event ingestion, client-side state management |
-| **API client** | `lib/api.ts` | TanStack Query wrappers around REST endpoints, typed fetch helpers |
+| **Streaming** | `lib/sse.ts` (SSE consumer with reconnect + backoff) | Ingests validated SSE frames and patches the query cache; exposes the connection `phase` as local hook state |
+| **State / API client** | `lib/api.ts` | TanStack Query is the client state layer — typed fetch wrappers plus the cache the SSE consumer patches live |
 | **Validation** | `lib/env.ts` (env vars), `lib/schemas.ts` (wire payloads) | Zod schemas for runtime validation at every boundary |
 | **Utilities** | `lib/transcript.ts`, `lib/utils.ts` | Transcript formatting, cn() classname helper |
 | **UI primitives** | `components/ui/*` | shadcn/ui components (Button, Card, Skeleton, etc.) |
@@ -46,11 +46,11 @@ flowchart TD
         Mount["page mount"] --> SSEHook["useDebateStream(id)"]
         SSEHook -->|EventSource| Backend["Backend SSE endpoint"]
         Backend -->|typed SSE frames| Validate["zod schema validation"]
-        Validate -->|valid events| ZustandStore["Zustand store<br/>(discriminated union state)"]
+        Validate -->|valid events| Cache["TanStack Query cache<br/>(patched live by the SSE consumer)"]
         Validate -.->|unknown events| Log["console.warn + drop"]
-        ZustandStore --> ArenaView["DebateArena<br/>+ AgentPanel x2"]
-        ZustandStore --> VerdictView["JudgeVerdict"]
-        ZustandStore --> ConfBar["ConfidenceBar"]
+        Cache --> ArenaView["DebateArena<br/>+ AgentPanel x2"]
+        Cache --> VerdictView["JudgeVerdict"]
+        Cache --> ConfBar["ConfidenceBar"]
     end
 
     subgraph TranscriptPage ["/debates/[id]/transcript"]
@@ -68,42 +68,42 @@ sequenceDiagram
     participant Hook as useDebateStream
     participant ES as EventSource
     participant Zod as schemas.ts
-    participant Store as Zustand store
+    participant Cache as TanStack Query cache
     participant UI as DebateArena
 
     Page->>Hook: mount(debateId)
-    Hook->>Store: set phase = "connecting"
+    Hook->>Hook: phase = "connecting" (local state)
     Hook->>ES: new EventSource(/debates/:id/stream)
 
     ES-->>Hook: event: plan_complete
     Hook->>Zod: parse(payload)
     Zod-->>Hook: validated PlanEvent
-    Hook->>Store: dispatch(planComplete)
-    Store->>UI: re-render with plan data
+    Hook->>Cache: patch(status/rounds) + invalidate
+    Cache->>UI: re-render with plan data
 
     par Parallel agent events
         ES-->>Hook: event: proponent_argument
-        Hook->>Store: dispatch(proponentArg)
+        Hook->>Cache: patch(rounds)
     and
         ES-->>Hook: event: skeptic_argument
-        Hook->>Store: dispatch(skepticArg)
+        Hook->>Cache: patch(rounds)
     end
-    Store->>UI: re-render Arena panels
+    Cache->>UI: re-render Arena panels
 
     ES-->>Hook: event: judge_verdict
-    Hook->>Store: dispatch(verdict), phase = "complete"
-    Store->>UI: render JudgeVerdict
+    Hook->>Cache: patch(verdict, confidence)
+    Cache->>UI: render JudgeVerdict
 
     ES-->>Hook: event: debate_complete
     Hook->>ES: close()
-    Hook->>Store: phase = "complete"
-    Store->>UI: show transcript link
+    Hook->>Hook: phase = "complete"
+    Hook->>Cache: invalidate (pull final transcript)
 ```
 
 ## Invariants
 
-1. **SSE payloads validated before store** -- every event passes through a zod discriminated union in `schemas.ts`. Unknown event types are logged and dropped, never rendered.
-2. **Discriminated union state** -- the Zustand store models debate phase as `idle | connecting | streaming | complete | error`. Illegal transitions are unrepresentable; components pattern-match on phase.
+1. **SSE payloads validated before the cache** -- every event passes through a zod discriminated union in `schemas.ts` before the consumer patches the query cache. Unknown event types are logged and dropped, never rendered.
+2. **Discriminated union state** -- `useDebateStream` models the connection phase as `idle | connecting | streaming | complete | error` (a discriminated union held in hook state). Illegal transitions are unrepresentable; components pattern-match on phase.
 3. **Env validated at import** -- `env.ts` throws at import time if required env vars (`NEXT_PUBLIC_API_URL`, etc.) are missing. No silent `undefined` leaking into fetch URLs.
 4. **Typed props everywhere** -- all components receive explicitly typed props; no `any` crosses module boundaries.
 5. **Server/client boundary** -- pages are server components that fetch initial data; interactivity lives in `"use client"` components and hooks.
