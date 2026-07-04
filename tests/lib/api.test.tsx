@@ -165,6 +165,34 @@ describe("useCreateDebate", () => {
     const body = JSON.parse(call[1].body);
     expect(body.max_rounds).toBe(5);
   });
+
+  it("F1 rejects with ApiError(408) when the request never settles (timeout)", async () => {
+    vi.useFakeTimers();
+    // A fetch that only settles when its AbortSignal fires — models a
+    // cold-start black-hole / hung proxy.
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useCreateDebate(), { wrapper });
+
+    let caught: unknown;
+    const pending = result.current.mutateAsync({ claim: "x" }).catch((e) => {
+      caught = e;
+    });
+    // Advance past the 30s default timeout so jsonFetch aborts the request.
+    await vi.advanceTimersByTimeAsync(31_000);
+    await pending;
+
+    expect(caught).toBeInstanceOf(ApiError);
+    expect((caught as ApiError).status).toBe(408);
+    vi.useRealTimers();
+  });
 });
 
 /* ---------------------------------------------------------------

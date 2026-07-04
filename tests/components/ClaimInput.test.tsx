@@ -20,6 +20,23 @@ describe("ClaimInput", () => {
     expect(onSubmit).toHaveBeenCalledWith("Remote work reduces productivity.", 5);
   });
 
+  it("P3 advanced disclosure exposes a max-rounds control that is passed to onSubmit", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<ClaimInput onSubmit={onSubmit} isPending={false} />);
+
+    // The control is hidden until the Advanced disclosure is expanded.
+    expect(screen.queryByLabelText(/max-rounds/i)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /advanced/i }));
+
+    const select = screen.getByLabelText(/max-rounds/i);
+    expect(select).toBeInTheDocument();
+    await userEvent.selectOptions(select, "7");
+
+    await userEvent.type(screen.getByRole("textbox", { name: /claim/i }), "A claim");
+    await userEvent.click(screen.getByRole("button", { name: /start[- ]debate|submit/i }));
+    expect(onSubmit).toHaveBeenCalledWith("A claim", 7);
+  });
+
   it("F1 empty submit does not call onSubmit and shows inline error", async () => {
     const onSubmit = vi.fn();
     render(<ClaimInput onSubmit={onSubmit} isPending={false} />);

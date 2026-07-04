@@ -18,36 +18,36 @@ describe("TypewriterMarkdown", () => {
     expect(onDone).toHaveBeenCalledOnce();
   });
 
-  it("P2 speed>0 progressively reveals text", () => {
+  it("P2 speed>0 shows the reveal cursor before completion", () => {
     render(<TypewriterMarkdown markdown="abcdefghij" speed={10} />);
-    // Initially only partial text should be shown (not the full string)
-    // We can't check exact chars due to rounding, but cursor should be visible
-    const cursor = document.querySelector("[aria-hidden]");
-    expect(cursor).toBeInTheDocument();
+    // The full text is parsed once and present in the DOM (visually clipped),
+    // and the reveal cursor is shown while the wipe is in progress.
+    expect(screen.getByText("abcdefghij")).toBeInTheDocument();
+    expect(document.querySelector("[aria-hidden]")).toBeInTheDocument();
   });
 
   it("P3 speed>0 calls onDone when fully revealed", async () => {
     const onDone = vi.fn();
     render(<TypewriterMarkdown markdown="abc" speed={100} onDone={onDone} />);
-    // Run timers long enough to fully reveal 3 chars at 100 cps
     await act(async () => {
       vi.advanceTimersByTime(5_000);
     });
-    expect(onDone).toHaveBeenCalled();
+    expect(onDone).toHaveBeenCalledOnce();
   });
 
-  it("P4 cursor is hidden after full reveal", async () => {
+  it("P4 cursor is hidden after the reveal completes", async () => {
     render(<TypewriterMarkdown markdown="ab" speed={100} />);
     await act(async () => {
       vi.advanceTimersByTime(5_000);
     });
-    // After reveal, the cursor span (aria-hidden) should no longer be present
-    const cursor = document.querySelector("[aria-hidden]");
-    expect(cursor).toBeNull();
+    expect(document.querySelector("[aria-hidden]")).toBeNull();
   });
 
-  it("P5 renders markdown (bold, links) correctly", () => {
-    render(<TypewriterMarkdown markdown="**bold** text" speed={0} />);
+  it("P5 parses markdown (bold, links) exactly once — full output present immediately", () => {
+    // If we were re-parsing an ever-growing slice, the bold node would only
+    // appear partway through the animation. Parse-once means it is present
+    // from the first render regardless of reveal progress.
+    render(<TypewriterMarkdown markdown="**bold** text" speed={100} />);
     const bold = screen.getByText("bold");
     expect(bold.tagName).toBe("STRONG");
   });
@@ -59,40 +59,41 @@ describe("TypewriterMarkdown", () => {
     expect(container.firstChild).toHaveClass("custom-class");
   });
 
-  it("F1 interval is cleared on unmount", () => {
-    const clearSpy = vi.spyOn(window, "clearInterval");
+  it("P7 does NOT use a per-frame setInterval (no per-tick re-parse)", () => {
+    const intervalSpy = vi.spyOn(window, "setInterval");
+    render(<TypewriterMarkdown markdown="a longer body of text here" speed={420} />);
+    expect(intervalSpy).not.toHaveBeenCalled();
+    intervalSpy.mockRestore();
+  });
+
+  it("F1 reveal timer is cleared on unmount", () => {
+    const clearSpy = vi.spyOn(window, "clearTimeout");
     const { unmount } = render(<TypewriterMarkdown markdown="long text here" speed={10} />);
     unmount();
     expect(clearSpy).toHaveBeenCalled();
     clearSpy.mockRestore();
   });
 
-  it("F2 shorter replacement text snaps immediately", async () => {
+  it("F2 replacement text re-renders the new content", async () => {
     const { rerender } = render(<TypewriterMarkdown markdown="abcdefghij" speed={0} />);
-    // Rerender with shorter text
-    rerender(<TypewriterMarkdown markdown="abc" speed={0} />);
+    rerender(<TypewriterMarkdown markdown="xyz" speed={0} />);
     await act(() => Promise.resolve());
-    expect(screen.getByText("abc")).toBeInTheDocument();
+    expect(screen.getByText("xyz")).toBeInTheDocument();
   });
 
-  it("F3 shorter replacement text with speed>0 snaps to new length", async () => {
-    // Start with long text at speed=0 so revealed = 10 instantly
+  it("F3 replacement text with speed>0 renders the new content and re-arms the cursor", async () => {
     const { rerender } = render(<TypewriterMarkdown markdown="abcdefghij" speed={0} />);
-    // Now rerender with shorter text and speed>0 — hits markdown.length < revealed branch
-    rerender(<TypewriterMarkdown markdown="abc" speed={100} />);
+    rerender(<TypewriterMarkdown markdown="new body" speed={100} />);
     await act(() => Promise.resolve());
-    expect(screen.getByText("abc")).toBeInTheDocument();
+    expect(screen.getByText("new body")).toBeInTheDocument();
+    expect(document.querySelector("[aria-hidden]")).toBeInTheDocument();
   });
 
-  it("F4 when already fully revealed, onDone fires without restarting animation", async () => {
+  it("F4 empty markdown reveals instantly and fires onDone", () => {
     const onDone = vi.fn();
-    // speed=0 instantly reveals. Then rerender with same length triggers revealed >= markdown.length
-    const { rerender } = render(<TypewriterMarkdown markdown="abc" speed={0} onDone={onDone} />);
-    expect(onDone).toHaveBeenCalledOnce();
-    onDone.mockClear();
-    // Rerender with same text — revealed already equals markdown.length
-    rerender(<TypewriterMarkdown markdown="abc" speed={100} onDone={onDone} />);
-    await act(() => Promise.resolve());
+    render(<TypewriterMarkdown markdown="" speed={420} onDone={onDone} />);
+    // No cursor, onDone fired: empty content is treated as instant.
+    expect(document.querySelector("[aria-hidden]")).toBeNull();
     expect(onDone).toHaveBeenCalledOnce();
   });
 });

@@ -100,6 +100,32 @@ describe("BackendStatus", () => {
     expect(screen.queryByText(/waking up/)).toBeNull();
   });
 
+  it("F4 hung backend (never responds) flips to 'down' via the probe timeout", async () => {
+    // fetch only settles when its AbortSignal fires — models a backend that
+    // accepts the connection but never responds.
+    globalThis.fetch = vi.fn(
+      (_url: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    ) as typeof globalThis.fetch;
+    render(<BackendStatus />);
+    // At the 3s cold threshold it shows the cold-start hint...
+    await act(async () => {
+      vi.advanceTimersByTime(3_100);
+    });
+    expect(screen.getByText(/waking up/)).toBeInTheDocument();
+    // ...but the probe's own 10s timeout then aborts the request → 'down'.
+    await act(async () => {
+      vi.advanceTimersByTime(7_100);
+      await Promise.resolve();
+    });
+    expect(screen.getByText(/unreachable/)).toBeInTheDocument();
+    expect(screen.queryByText(/waking up/)).toBeNull();
+  });
+
   it("F3 abort controller cancels fetch on unmount", () => {
     const abortSpy = vi.spyOn(AbortController.prototype, "abort");
     globalThis.fetch = vi.fn(() => new Promise<Response>(() => {}));

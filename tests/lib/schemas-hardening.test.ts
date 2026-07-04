@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   DebateSchema,
   DoneEventSchema,
+  EvidenceSchema,
+  isSafeHttpUrl,
   isTerminalErrorReason,
   isUuid,
   parseRounds,
@@ -278,6 +280,44 @@ describe("parseRounds — side normalisation", () => {
       },
     ]);
     expect(rounds[0].evidence).toHaveLength(0);
+  });
+});
+
+describe("evidence URL is restricted to http(s)", () => {
+  it("P1 isSafeHttpUrl accepts http and https absolute URLs", () => {
+    expect(isSafeHttpUrl("https://who.int/x")).toBe(true);
+    expect(isSafeHttpUrl("http://example.com")).toBe(true);
+  });
+
+  it("F1 isSafeHttpUrl rejects javascript:, data:, relative, and non-strings", () => {
+    expect(isSafeHttpUrl("javascript:alert(1)")).toBe(false);
+    expect(isSafeHttpUrl("data:text/html,<script>1</script>")).toBe(false);
+    expect(isSafeHttpUrl("/relative/path")).toBe(false);
+    expect(isSafeHttpUrl("ftp://host/file")).toBe(false);
+    expect(isSafeHttpUrl(42)).toBe(false);
+    expect(isSafeHttpUrl(null)).toBe(false);
+  });
+
+  it("F2 EvidenceSchema rejects a javascript: URL", () => {
+    const result = EvidenceSchema.safeParse({ title: "T", url: "javascript:alert(1)" });
+    expect(result.success).toBe(false);
+  });
+
+  it("F3 parseRounds drops evidence whose url is not http(s)", () => {
+    const rounds = parseRounds([
+      {
+        side: "pro",
+        round: 1,
+        argument: "a",
+        evidence: [
+          { title: "bad", url: "javascript:alert(1)" },
+          { title: "relative", url: "/foo" },
+          { title: "good", url: "https://ok.example" },
+        ],
+      },
+    ]);
+    expect(rounds[0].evidence).toHaveLength(1);
+    expect(rounds[0].evidence[0].url).toBe("https://ok.example");
   });
 });
 

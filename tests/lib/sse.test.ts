@@ -471,7 +471,7 @@ describe("useDebateStream — failure cases (negative space)", () => {
     expect(result.current.phase.kind).toBe("connecting");
   });
 
-  it("F12c error event with reason:gone is also terminal (via isTerminalErrorReason)", async () => {
+  it("F12c error event with reason:gone is terminal AND preserved as 'gone'", async () => {
     const { result } = renderHook(() => useDebateStream(DEBATE_ID));
     const es = FakeEventSource.last();
     act(() => {
@@ -481,7 +481,9 @@ describe("useDebateStream — failure cases (negative space)", () => {
     await waitFor(() => {
       expect(result.current.phase.kind).toBe("error");
       if (result.current.phase.kind === "error") {
-        expect(result.current.phase.reason).toBe("not_found");
+        // The server-sent terminal reason is preserved, not collapsed to
+        // "not_found" (the StreamPhase union now represents "gone").
+        expect(result.current.phase.reason).toBe("gone");
       }
     });
     // Terminal — no retry
