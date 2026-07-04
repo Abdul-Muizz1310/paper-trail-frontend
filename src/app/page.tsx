@@ -5,20 +5,11 @@ import { TerminalWindow } from "@/components/terminal/TerminalWindow";
 import { HomeClaimForm } from "./_home/HomeClaimForm";
 
 export default function HomePage() {
+  // NOTE: the live backend health signal is the <BackendStatus /> pill in the
+  // hero below. The header intentionally does NOT duplicate it with a hardcoded
+  // "OK" pill, which used to contradict the real /health check on the page.
   return (
-    <PageFrame
-      active="home"
-      statusLeft="paper-trail.dev ~/"
-      statusRight={
-        <>
-          <span>UTF-8</span>
-          <span className="text-fg-faint">·</span>
-          <span>
-            backend <span className="text-success">OK</span>
-          </span>
-        </>
-      }
-    >
+    <PageFrame active="home" statusLeft="paper-trail.dev ~/" statusRight={<span>UTF-8</span>}>
       <div className="flex flex-col gap-14 pt-6 md:pt-10">
         {/* Hero */}
         <section className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[1.1fr_0.9fr]">

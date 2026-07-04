@@ -14,21 +14,55 @@ class ApiError extends Error {
   }
 }
 
-async function jsonFetch(path: string, init?: RequestInit): Promise<unknown> {
+/**
+ * Sentinel status for a client-side request timeout (no HTTP 408 was
+ * actually returned — the request never settled and we aborted it).
+ * Callers can branch on this to show an honest "backend is waking up"
+ * message instead of the generic failure copy.
+ */
+const TIMEOUT_STATUS = 408;
+
+/** Default hard timeout for a single REST call (Render cold starts ~20s). */
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+type JsonFetchInit = RequestInit & { timeoutMs?: number };
+
+async function jsonFetch(path: string, init?: JsonFetchInit): Promise<unknown> {
   // NOTE: only set content-type when we have a body. Adding it to a
   // cross-origin GET turns it into a non-simple request and forces a
   // CORS preflight, which the backend rejects for test/mocked setups.
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, ...requestInit } = init ?? {};
   const headers: Record<string, string> = {
-    ...(init?.headers as Record<string, string> | undefined),
+    ...(requestInit.headers as Record<string, string> | undefined),
   };
-  if (init?.body && !headers["content-type"]) {
+  if (requestInit.body && !headers["content-type"]) {
     headers["content-type"] = "application/json";
   }
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, { ...init, headers });
-  if (!res.ok) {
-    throw new ApiError(res.status, `${init?.method ?? "GET"} ${path} → ${res.status}`);
+  const method = requestInit.method ?? "GET";
+
+  // Abort the request if it never settles (cold-start black-hole / hung
+  // proxy), so the mutation rejects and the UI can re-enable + retry
+  // instead of hanging on "compiling…" forever.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, {
+      ...requestInit,
+      headers,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      throw new ApiError(res.status, `${method} ${path} → ${res.status}`);
+    }
+    return await res.json();
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new ApiError(TIMEOUT_STATUS, `${method} ${path} → timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json();
 }
 
 /* ----------------------- Debates ----------------------- */
@@ -91,4 +125,4 @@ export function usePatchDebate(id: string) {
   };
 }
 
-export { ApiError };
+export { ApiError, TIMEOUT_STATUS };

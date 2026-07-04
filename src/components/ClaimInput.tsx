@@ -13,9 +13,15 @@ export type ClaimInputProps = {
  * Styled as a code-editor block: line number gutter, monospaced textarea,
  * `$ start-debate` submit pill. Matches the reference's hero vibe.
  */
+/** Bounded, discrete max-rounds choices. Default 5 (matches the backend). */
+export const MAX_ROUNDS_OPTIONS = [3, 5, 7] as const;
+const DEFAULT_MAX_ROUNDS = 5;
+
 export function ClaimInput({ onSubmit, isPending, error, defaultClaim }: ClaimInputProps) {
   const [claim, setClaim] = useState(defaultClaim ?? "");
   const [localError, setLocalError] = useState<string | null>(null);
+  const [maxRounds, setMaxRounds] = useState<number>(DEFAULT_MAX_ROUNDS);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const visibleError = error ?? localError;
 
@@ -31,7 +37,7 @@ export function ClaimInput({ onSubmit, isPending, error, defaultClaim }: ClaimIn
       return;
     }
     setLocalError(null);
-    await onSubmit(trimmed, 5);
+    await onSubmit(trimmed, maxRounds);
   };
 
   // Fake line-number gutter: count newlines + 1, minimum 3 lines for visual balance
@@ -86,14 +92,51 @@ export function ClaimInput({ onSubmit, isPending, error, defaultClaim }: ClaimIn
         </div>
       )}
 
+      {/* Advanced disclosure — collapsed by default */}
+      <div className="font-mono text-xs text-fg-faint">
+        <button
+          type="button"
+          aria-expanded={showAdvanced}
+          aria-controls="advanced-options"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="inline-flex items-center gap-1.5 text-fg-faint transition-colors hover:text-accent-cyan"
+        >
+          <span className="text-accent-cyan">{showAdvanced ? "▾" : "▸"}</span>
+          <span>advanced</span>
+        </button>
+        {showAdvanced && (
+          <div
+            id="advanced-options"
+            className="mt-2 flex items-center gap-3 rounded-lg border border-border bg-background/40 px-3 py-2"
+          >
+            <label htmlFor="max-rounds" className="text-fg-faint">
+              max-rounds:
+            </label>
+            <select
+              id="max-rounds"
+              value={maxRounds}
+              disabled={isPending}
+              onChange={(e) => setMaxRounds(Number(e.target.value))}
+              className="rounded border border-border bg-surface px-2 py-1 font-mono text-xs text-foreground focus:border-accent-cyan/60 focus:outline-none disabled:opacity-60"
+            >
+              {MAX_ROUNDS_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <span className="text-fg-faint">·</span>
+            <span className="text-fg-faint">model:</span>{" "}
+            <span className="text-accent-cyan">openrouter</span>
+          </div>
+        )}
+      </div>
+
       {/* Submit row */}
       <div className="flex items-center justify-between gap-4">
         <div className="font-mono text-xs text-fg-faint">
           <span className="text-fg-faint">max-rounds:</span>{" "}
-          <span className="text-fg-muted">5</span>
-          <span className="mx-2 text-fg-faint">·</span>
-          <span className="text-fg-faint">model:</span>{" "}
-          <span className="text-accent-cyan">openrouter</span>
+          <span className="text-fg-muted tabular-nums">{maxRounds}</span>
         </div>
         <button
           type="submit"

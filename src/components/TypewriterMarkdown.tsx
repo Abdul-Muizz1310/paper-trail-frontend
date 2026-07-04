@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -14,10 +14,15 @@ export type TypewriterMarkdownProps = {
 };
 
 /**
- * Reveals a markdown string character-by-character on mount. Gives the
- * arena a "live" feel even when the backend delivered the round in one
- * chunk. When the source `markdown` changes we append the delta rather
- * than restarting, so incremental backends work too.
+ * Renders a markdown string with a live "reveal" effect.
+ *
+ * The markdown is parsed **exactly once** (memoised on `markdown`) and the
+ * reveal is driven purely by CSS — a top-to-bottom clip wipe whose duration
+ * scales with the text length. The previous implementation re-ran the full
+ * remark→remark-gfm→rehype pipeline on every ~17ms animation tick against an
+ * ever-growing slice of the string (~200+ re-parses for a single argument),
+ * which pinned a CPU core during the headline streaming experience. Here the
+ * pipeline runs once and the animation is compositor-only.
  */
 export function TypewriterMarkdown({
   markdown,
@@ -25,56 +30,61 @@ export function TypewriterMarkdown({
   onDone,
   className,
 }: TypewriterMarkdownProps) {
-  const [revealed, setRevealed] = useState<number>(0);
-  const targetRef = useRef(markdown);
-  targetRef.current = markdown;
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
 
-  // We intentionally depend on `markdown.length` + `speed` only, not
-  // on `markdown` itself, so small reformats don't restart the
-  // animation, and not on `onDone` (we call it via ref).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see note above
+  const instant = speed <= 0 || markdown.length === 0;
+  const durationMs = instant ? 0 : Math.round((markdown.length / speed) * 1000);
+
+  // `progress` drives the CSS clip target (0 = hidden, 1 = fully shown).
+  // `done` gates the cursor + onDone and flips when the wipe completes.
+  const [progress, setProgress] = useState(instant ? 1 : 0);
+  const [done, setDone] = useState(instant);
+
+  const content = useMemo(
+    () => <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>,
+    [markdown],
+  );
+
+  // We depend on `markdown`/`speed` (via `instant`/`durationMs`) only, and
+  // call onDone through a ref so a changing callback doesn't restart it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: onDone via ref
   useEffect(() => {
-    if (speed <= 0) {
-      setRevealed(markdown.length);
+    if (instant) {
+      setProgress(1);
+      setDone(true);
       doneRef.current?.();
       return;
     }
-    // If the new text is shorter than what's already shown (e.g. a
-    // different round) snap to its full length.
-    if (markdown.length < revealed) {
-      setRevealed(markdown.length);
-      return;
-    }
-    if (revealed >= markdown.length) {
-      if (revealed === markdown.length) doneRef.current?.();
-      return;
-    }
-
-    const intervalMs = 1000 / speed;
-    const stepChars = Math.max(1, Math.round(speed / 60));
-    const id = window.setInterval(() => {
-      const target = targetRef.current.length;
-      setRevealed((prev) => {
-        const next = Math.min(prev + stepChars, target);
-        if (next >= target) {
-          window.clearInterval(id);
-          doneRef.current?.();
-        }
-        return next;
-      });
-    }, intervalMs * stepChars);
-    return () => window.clearInterval(id);
-  }, [markdown.length, speed]);
-
-  const shown = markdown.slice(0, revealed);
-  const isRevealing = revealed < markdown.length;
+    setProgress(0);
+    setDone(false);
+    // Kick the transition on the next frame so the browser sees the 0→1 change.
+    const raf = requestAnimationFrame(() => setProgress(1));
+    const timer = window.setTimeout(() => {
+      setDone(true);
+      doneRef.current?.();
+    }, durationMs);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+    };
+  }, [markdown, instant, durationMs]);
 
   return (
     <div className={className}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{shown}</ReactMarkdown>
-      {isRevealing && (
+      <div
+        style={
+          done
+            ? undefined
+            : {
+                clipPath: `inset(0 0 ${Math.round((1 - progress) * 100)}% 0)`,
+                transition: `clip-path ${durationMs}ms linear`,
+              }
+        }
+      >
+        {content}
+      </div>
+      {!done && (
         <span
           aria-hidden
           className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 bg-accent-cyan cursor-blink"

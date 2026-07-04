@@ -16,9 +16,27 @@ import { z } from "zod";
 export const VerdictSchema = z.enum(["TRUE", "FALSE", "INCONCLUSIVE"]);
 export type Verdict = z.infer<typeof VerdictSchema>;
 
+/**
+ * True only for absolute http(s) URLs. Evidence links are rendered
+ * directly as anchor hrefs (EvidenceCard), so a `javascript:`/`data:`
+ * URI echoed by the backend must never reach the DOM as a navigable
+ * link. Bare/relative paths are also rejected — they can't be opened
+ * safely in a new tab against an unknown origin.
+ */
+export function isSafeHttpUrl(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export const EvidenceSchema = z.object({
   title: z.string(),
-  url: z.string(), // Backend sometimes returns bare paths; keep loose.
+  // Only absolute http(s) URLs — this value is rendered as an anchor href.
+  url: z.string().refine(isSafeHttpUrl, { message: "url must be an http(s) URL" }),
   quote: z.string().optional(),
 });
 export type Evidence = z.infer<typeof EvidenceSchema>;
@@ -47,7 +65,9 @@ function parseEvidence(raw: unknown): Evidence | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   const title = typeof r.title === "string" ? r.title : null;
-  const url = typeof r.url === "string" ? r.url : null;
+  // Reject non-http(s) / relative URLs — this value flows into an anchor
+  // href, so a `javascript:`/`data:` URI must be dropped, not rendered.
+  const url = isSafeHttpUrl(r.url) ? r.url : null;
   if (!title || !url) return null;
   // Backend uses `snippet`; our UI shows it as `quote`.
   const quote =

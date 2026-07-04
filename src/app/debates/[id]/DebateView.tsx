@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { DebateArena, type DebatePhase } from "@/components/DebateArena";
 import { JudgeVerdict } from "@/components/JudgeVerdict";
 import { PageFrame } from "@/components/terminal/PageFrame";
@@ -23,14 +23,32 @@ function splitRounds(rounds: Round[]): { pro: Round[]; con: Round[] } {
   return { pro, con };
 }
 
+const POLL_INTERVAL_MS = 3000;
+
 export function DebateView({ debateId }: Props) {
   const debateQuery = useDebate(debateId);
   const invalidate = useInvalidateDebate(debateId);
   const patch = usePatchDebate(debateId);
+
+  // Tracks whether the backend inlines rounds[] in its SSE state events
+  // (v0.1.1+). When it does, the cache is patched in place and we never
+  // refetch during streaming — the "no-refetch" design. Only legacy
+  // backends that omit rounds[] fall back to the safety-net poll below.
+  const sawInlinedRounds = useRef(false);
+  // Throttle the fallback refetch so a chatty state stream can't trigger
+  // a GET on every tick (the old invalidate storm).
+  const lastInvalidateAt = useRef(0);
+
+  const throttledInvalidate = useCallback(() => {
+    const now = Date.now();
+    if (now - lastInvalidateAt.current < POLL_INTERVAL_MS) return;
+    lastInvalidateAt.current = now;
+    void invalidate();
+  }, [invalidate]);
+
   const { phase: streamPhase } = useDebateStream(debateId, {
     onStateChange: (ev) => {
-      // If the backend inlined rounds in the SSE payload (v0.1.1+),
-      // patch the cache directly — no extra HTTP round-trip.
+      // Patch the cache directly from the SSE payload — no HTTP round-trip.
       const patchBody: Partial<{
         status: string;
         verdict: Verdict | null;
@@ -42,28 +60,35 @@ export function DebateView({ debateId }: Props) {
         confidence: ev.confidence,
       };
       if (ev.rounds !== undefined) {
+        // Modern backend inlined the rounds: patch and do NOT refetch.
         patchBody.rounds = parseRounds(ev.rounds);
+        sawInlinedRounds.current = true;
+      } else {
+        // Legacy backend omits rounds[]: we must pull them, but throttled
+        // so we don't fire a GET on every state event.
+        throttledInvalidate();
       }
       patch(patchBody);
-      // Still trigger a background refetch for transcript_md, which
-      // the state event doesn't carry.
-      void invalidate();
     },
   });
 
-  // On terminal state, refetch once more to pull final transcript.
+  // On terminal state, refetch once to pull the final transcript_md
+  // (state events don't carry it). This is the only guaranteed refetch.
   useEffect(() => {
     if (streamPhase.kind === "done") void invalidate();
   }, [streamPhase.kind, invalidate]);
 
-  // Safety-net poll while running, in case SSE is silent.
+  // Safety-net poll while running — ONLY for legacy backends that don't
+  // inline rounds[]. When rounds arrive inline we rely on the patched
+  // cache and never poll (defeating the poll would be the invalidate storm).
   useEffect(() => {
     if (streamPhase.kind !== "streaming" && streamPhase.kind !== "connecting") {
       return;
     }
+    if (sawInlinedRounds.current) return;
     const id = window.setInterval(() => {
       void invalidate();
-    }, 3000);
+    }, POLL_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [streamPhase.kind, invalidate]);
 
@@ -134,7 +159,7 @@ export function DebateView({ debateId }: Props) {
           phase={arenaPhase}
           errorMessage={
             streamPhase.kind === "error"
-              ? streamPhase.reason === "not_found"
+              ? streamPhase.reason === "not_found" || streamPhase.reason === "gone"
                 ? "This debate no longer exists."
                 : "Connection failed."
               : undefined

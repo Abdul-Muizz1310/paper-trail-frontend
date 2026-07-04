@@ -18,7 +18,7 @@ export type StreamPhase =
   | { kind: "done"; final: DoneEvent }
   | {
       kind: "error";
-      reason: "not_found" | "network" | "max_retries_exceeded";
+      reason: "not_found" | "gone" | "network" | "max_retries_exceeded";
     };
 
 export type UseDebateStreamOptions = {
@@ -171,7 +171,10 @@ export function useDebateStream(
           const parsed = ErrorEventSchema.safeParse(raw);
           if (parsed.success) {
             if (isTerminalErrorReason(parsed.data.reason)) {
-              terminate({ kind: "error", reason: "not_found" });
+              // Preserve which terminal reason the server actually sent
+              // instead of collapsing every terminal error to "not_found".
+              const reason = parsed.data.reason === "gone" ? "gone" : "not_found";
+              terminate({ kind: "error", reason });
               return;
             }
           }

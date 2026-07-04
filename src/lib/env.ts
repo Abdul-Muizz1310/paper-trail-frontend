@@ -10,7 +10,9 @@ import { z } from "zod";
 const EnvSchema = z.object({
   NEXT_PUBLIC_API_URL: z
     .string()
-    .url("NEXT_PUBLIC_API_URL must be a valid URL (e.g. https://paper-trail-backend.onrender.com)"),
+    .url(
+      "NEXT_PUBLIC_API_URL must be a valid URL (e.g. https://paper-trail-backend-7h27.onrender.com)",
+    ),
   NEXT_PUBLIC_SITE_URL: z.string().url("NEXT_PUBLIC_SITE_URL must be a valid URL"),
 });
 
