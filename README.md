@@ -3,7 +3,7 @@
 > ⚡ **Next.js 16 UI for a LangGraph multi-agent debate arena.**
 > Terminal-styled front-end. Live SSE streaming. Every verdict comes with a receipt.
 
-🌐 [Backend API](https://paper-trail-backend-7h27.onrender.com) · 🔙 [Backend Repo](https://github.com/Abdul-Muizz1310/paper-trail-backend) · 🚀 [Quickstart](#-run-locally) · 🏗️ [Architecture](#️-architecture) · 🧪 [Testing](#-testing)
+🌐 Live UI: [paper-trail-frontend-sable.vercel.app](https://paper-trail-frontend-sable.vercel.app) · 🔌 [Backend API](https://paper-trail-backend-7h27.onrender.com) · 🔙 [Backend Repo](https://github.com/Abdul-Muizz1310/paper-trail-backend) · 🚀 [Quickstart](#-run-locally) · 🏗️ [Architecture](#️-architecture) · 🧪 [Testing](#-testing)
 
 ![next](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)
 ![react](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react&logoColor=black)
@@ -11,7 +11,7 @@
 ![tailwind](https://img.shields.io/badge/Tailwind-v4-06b6d4?style=flat-square&logo=tailwindcss&logoColor=white)
 ![zod](https://img.shields.io/badge/Zod-boundaries-3068b7?style=flat-square)
 ![vercel](https://img.shields.io/badge/Vercel-deployed-000000?style=flat-square&logo=vercel&logoColor=white)
-![tests](https://img.shields.io/badge/tests-165%20Vitest-6e9f18?style=flat-square)
+![tests](https://img.shields.io/badge/tests-182%20Vitest-6e9f18?style=flat-square)
 ![biome](https://img.shields.io/badge/lint-Biome-60a5fa?style=flat-square)
 ![rc](https://img.shields.io/badge/react--compiler-enabled-ff69b4?style=flat-square)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
@@ -49,7 +49,7 @@ The whole app is wrapped in a **terminal-window aesthetic**: grid backgrounds, s
 - 🔁 Automatic reconnect with exponential backoff (5 retries, cap 8s)
 - 🛟 Safety-net polling fallback (3s) while streaming
 - 🛡️ Zod validation at every external boundary (API, env, SSE events)
-- ⚡ TanStack Query cache patched in-place from SSE payloads (no refetch)
+- ⚡ TanStack Query cache patched in-place from SSE payloads (no refetch during streaming; one refetch on terminal to pull the transcript)
 - ⌨️ Typewriter markdown rendering for live reveal
 - 📝 Deterministic transcript view with judge reasoning extraction
 - 💤 Backend health indicator with cold-start detection
@@ -97,7 +97,7 @@ sequenceDiagram
     UI->>Hook: unmount → cleanup
 ```
 
-**Streaming model:** SSE is the primary transport. A 3-second polling fallback runs alongside as a safety net. When the backend inlines `rounds[]` in `state` events, the cache is patched directly — no refetch round-trip.
+**Streaming model:** SSE is the primary transport. When the backend inlines `rounds[]` in `state` events (v0.1.1+), the cache is patched directly — **no refetch round-trip** while streaming. The only guaranteed `GET /debates/{id}` happens once on the terminal `done` phase to pull the final `transcript_md` (which `state` events don't carry). A 3-second polling fallback runs **only** for legacy backends that omit inline `rounds[]`; once inline rounds are observed the poll switches off so it can't storm the backend.
 
 **Reconnect logic** ([`src/lib/sse.ts`](src/lib/sse.ts)): 5-retry budget, exponential backoff `min(500ms × 2^attempt, 8000ms)`. Terminated on `done`, `error: not_found`, or unmount. Terminal refs prevent stale closures; timers cleaned up on every path.
 
@@ -156,7 +156,7 @@ src/
 |---|---|
 | **Framework** | Next.js 16 (App Router, React Server Components, React Compiler) |
 | **UI** | React 19 · TypeScript strict |
-| **Styling** | Tailwind CSS v4 · shadcn/ui · radix-ui · lucide · Framer Motion |
+| **Styling** | Tailwind CSS v4 · shadcn/ui · radix-ui · lucide |
 | **State** | TanStack Query v5 (server cache, patched live by the SSE consumer) |
 | **Validation** | Zod (env, API, SSE) |
 | **Markdown** | react-markdown + remark-gfm |
@@ -227,9 +227,9 @@ pnpm test:e2e                # Playwright chromium
 
 | Metric | Value |
 |---|---|
-| **Unit tests** | 165 tests (Vitest + jsdom) |
-| **Line coverage** | **80.19%** (324/404 lines over all `src/`; 100% over the modules the unit suite exercises) |
-| **E2E** | Playwright chromium, fixture `tests/e2e/fixtures/transcript.md` |
+| **Unit tests** | 182 tests (Vitest + jsdom) |
+| **Line coverage** | **90.4%** (405/448 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
+| **E2E** | Playwright chromium (mocked mode), fixture `tests/e2e/fixtures/transcript.md` — runs on every PR via the `e2e` CI job |
 | **SSE suite** | 28 cases (`tests/lib/sse.test.ts`): 5 property cases (P1–P3, P5, P6) + 23 failure cases (F1–F12 and sub-variants: lifecycles, retries, cleanup, backoff) |
 | **Methodology** | Red-first spec-TDD. Zod-validated discriminated unions instead of defensive runtime checks. |
 
@@ -251,6 +251,11 @@ pnpm test:e2e                # Playwright chromium
 ## 🚀 Deploy
 
 Hosted on **Vercel**. Push to `main` → Vercel build → preview URL → promote to prod.
+
+> ⚠️ **Production URL:** the live frontend URL is only recoverable from the Vercel
+> dashboard for this project. Once confirmed, set it as `NEXT_PUBLIC_SITE_URL`
+> (production env) and replace the placeholder in the header link above. Until then
+> the canonical URL / OG tags fall back to `http://localhost:3000`.
 
 Required env vars at build time:
 

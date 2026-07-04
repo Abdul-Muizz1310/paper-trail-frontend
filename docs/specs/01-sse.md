@@ -14,9 +14,12 @@ The backend emits three named SSE events. Every `data` field is JSON.
 |---|---|---|
 | `state` | `{ type: "state", status: string, verdict: "TRUE"\|"FALSE"\|"INCONCLUSIVE"\|null, confidence: number\|null, rounds_count: number }` | Every poll where the tuple `(status, verdict, confidence, rounds_count)` changed |
 | `done` | `{ type: "done", status?: string, verdict?: ..., confidence?: ..., rounds_count?: number, reason?: "timeout" }` | When `status ∈ {"done","failed","error"}` or the 60s server-side deadline elapses |
-| `error` | `{ reason: "not_found" }` | Debate ID does not exist |
+| `error` | `{ reason: "not_found" \| "gone" \| ... }` | Terminal reasons (`not_found`, `gone`) stop retries and are preserved on the phase; other reasons trigger a reconnect |
 
-**Critical:** the stream does NOT carry per-round agent content. On each `state` whose `rounds_count` or `status` changed, the consumer MUST trigger a refetch of `GET /debates/{id}` to pull the full `rounds[]` snapshot.
+**Round content.** As of backend v0.1.1 the `state` event inlines the full `rounds[]` array, so the consumer patches the TanStack Query cache in place from the payload and does **not** refetch during streaming (the "no-refetch" design). Two exceptions:
+
+- On the terminal `done` phase the consumer refetches `GET /debates/{id}` **once** to pull `transcript_md`, which `state` events don't carry.
+- For legacy backends that omit inline `rounds[]`, the consumer falls back to a **throttled** refetch (≤ once per 3s) plus a 3s safety-net poll — active only until the first inline-rounds event is seen. It must never fire a `GET` on every `state` tick.
 
 ## Hook API
 
@@ -26,7 +29,7 @@ type StreamPhase =
   | { kind: "connecting" }
   | { kind: "streaming"; lastState: StateEvent }
   | { kind: "done"; final: DoneEvent }
-  | { kind: "error"; reason: "not_found" | "network" | "max_retries_exceeded" };
+  | { kind: "error"; reason: "not_found" | "gone" | "network" | "max_retries_exceeded" };
 
 function useDebateStream(debateId: string, opts?: {
   maxRetries?: number;       // default 5

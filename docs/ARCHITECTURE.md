@@ -8,7 +8,7 @@ flowchart LR
     Home -->|POST /debates| API[[paper-trail-backend<br/>FastAPI + LangGraph]]
     API -->|debate_id| DebatePage[/"/debates/[id]" page/]
     DebatePage -->|SSE /debates/:id/stream| Hook[useDebateStream hook]
-    Hook -->|patch + invalidate| Query[(TanStack Query cache)]
+    Hook -->|patch in place; invalidate only on terminal| Query[(TanStack Query cache)]
     Query --> Arena[DebateArena]
     Arena --> ProPanel[Pro AgentPanel]
     Arena --> ConPanel[Con AgentPanel]
@@ -78,7 +78,7 @@ sequenceDiagram
     ES-->>Hook: event: plan_complete
     Hook->>Zod: parse(payload)
     Zod-->>Hook: validated PlanEvent
-    Hook->>Cache: patch(status/rounds) + invalidate
+    Hook->>Cache: patch(status/rounds) in place (no refetch)
     Cache->>UI: re-render with plan data
 
     par Parallel agent events
