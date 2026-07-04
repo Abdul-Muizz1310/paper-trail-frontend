@@ -25,7 +25,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
-      NEXT_PUBLIC_API_URL: "https://paper-trail-backend-7h27.onrender.com",
+      NEXT_PUBLIC_API_URL: "https://paper-trail-backend-jjpf.onrender.com",
       NEXT_PUBLIC_SITE_URL: baseURL,
     },
   },

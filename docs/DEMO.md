@@ -4,7 +4,7 @@ Target audience: a technical interviewer. Total runtime: ~3 minutes.
 
 ## Setup (before the call)
 
-1. Backend is live at `https://paper-trail-backend-7h27.onrender.com/health` — open in a tab, confirm `{"status":"ok"}`.
+1. Backend is live at `https://paper-trail-backend-jjpf.onrender.com/health` — open in a tab, confirm `{"status":"ok"}`.
 2. Frontend is live at the Vercel URL (production).
 3. Have one "good" claim queued: **"Remote work reduces software engineering productivity."**
 4. Have one "hostile" claim queued: **"The Eiffel Tower is in Berlin."** (tests the judge's handling of factual claims).

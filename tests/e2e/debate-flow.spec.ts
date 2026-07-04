@@ -6,7 +6,7 @@ import { expect, type Route, test } from "@playwright/test";
 const DEBATE_ID = "11111111-1111-4111-8111-111111111111";
 // Host of the mocked backend. Routes must be scoped to this host or they
 // would also match the Next.js app's own URL (localhost:3000/debates/ID).
-const API = "https://paper-trail-backend-7h27.onrender.com";
+const API = "https://paper-trail-backend-jjpf.onrender.com";
 const TRANSCRIPT_MD = readFileSync(path.join(__dirname, "fixtures", "transcript.md"), "utf-8");
 
 const CORS_HEADERS = {

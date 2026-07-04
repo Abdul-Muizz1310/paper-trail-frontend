@@ -23,7 +23,7 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_API_URL: https://paper-trail-backend-7h27.onrender.com
+      NEXT_PUBLIC_API_URL: https://paper-trail-backend-jjpf.onrender.com
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_API_URL: https://paper-trail-backend-7h27.onrender.com
+      NEXT_PUBLIC_API_URL: https://paper-trail-backend-jjpf.onrender.com
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
     # Mocked mode: the Playwright suite intercepts all backend calls with
     # route.fulfill, so no live backend is needed and the run is deterministic.
     env:
-      NEXT_PUBLIC_API_URL: https://paper-trail-backend-7h27.onrender.com
+      NEXT_PUBLIC_API_URL: https://paper-trail-backend-jjpf.onrender.com
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4

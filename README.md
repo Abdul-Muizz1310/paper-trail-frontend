@@ -3,7 +3,7 @@
 > ⚡ **Next.js 16 UI for a LangGraph multi-agent debate arena.**
 > Terminal-styled front-end. Live SSE streaming. Every verdict comes with a receipt.
 
-🌐 Live UI: [paper-trail-frontend-sable.vercel.app](https://paper-trail-frontend-sable.vercel.app) · 🔌 [Backend API](https://paper-trail-backend-7h27.onrender.com) · 🔙 [Backend Repo](https://github.com/Abdul-Muizz1310/paper-trail-backend) · 🚀 [Quickstart](#-run-locally) · 🏗️ [Architecture](#️-architecture) · 🧪 [Testing](#-testing)
+🌐 Live UI: [paper-trail-frontend-sable.vercel.app](https://paper-trail-frontend-sable.vercel.app) · 🔌 [Backend API](https://paper-trail-backend-jjpf.onrender.com) · 🔙 [Backend Repo](https://github.com/Abdul-Muizz1310/paper-trail-backend) · 🚀 [Quickstart](#-run-locally) · 🏗️ [Architecture](#️-architecture) · 🧪 [Testing](#-testing)
 
 ![next](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)
 ![react](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react&logoColor=black)
@@ -22,7 +22,7 @@
 $ pnpm dev
   ▲ Next.js 16.0.0 (Turbopack)
   - Local:   http://localhost:3000
-  - API:     https://paper-trail-backend-7h27.onrender.com
+  - API:     https://paper-trail-backend-jjpf.onrender.com
 
 [home]       claim input armed · backend status: warm ●
 [debate]     SSE /debates/<id>/stream opened · 5 retries budget
@@ -39,7 +39,7 @@ The **paper-trail** front-end. Users type a claim; the UI spawns a debate on the
 
 The whole app is wrapped in a **terminal-window aesthetic**: grid backgrounds, scanlines, status dots, monospace fonts, shell-path section headers. Dark mode only. No skeuomorphic chrome — just the feel of watching a pipeline run.
 
-> 🔙 Backend: [`paper-trail-backend`](https://github.com/Abdul-Muizz1310/paper-trail-backend) — deployed at `paper-trail-backend-7h27.onrender.com`.
+> 🔙 Backend: [`paper-trail-backend`](https://github.com/Abdul-Muizz1310/paper-trail-backend) — deployed at `paper-trail-backend-jjpf.onrender.com`.
 
 ---
 

@@ -38,7 +38,7 @@ export function AppNav({ active }: AppNavProps) {
             github
           </a>
           <a
-            href="https://paper-trail-backend-7h27.onrender.com/docs"
+            href="https://paper-trail-backend-jjpf.onrender.com/docs"
             target="_blank"
             rel="noopener noreferrer"
             className="transition-colors hover:text-foreground"

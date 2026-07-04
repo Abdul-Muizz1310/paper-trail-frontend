@@ -4,7 +4,7 @@ import { useDebateStream } from "@/lib/sse";
 import { FakeEventSource } from "./fake-event-source";
 
 const DEBATE_ID = "11111111-1111-1111-1111-111111111111";
-const API_URL = "https://paper-trail-backend-7h27.onrender.com";
+const API_URL = "https://paper-trail-backend-jjpf.onrender.com";
 
 beforeEach(() => {
   FakeEventSource.reset();
