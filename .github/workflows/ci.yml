@@ -66,3 +66,26 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+
+  # NOTE: no deploy job -- the Render service auto-deploys main on push. This
+  # job verifies the deploy that push triggered actually came up. It is inert
+  # unless the SMOKE_BASE_URL repository variable is set: tests/smoke.test.ts
+  # self-skips and exits 0 without making a single HTTP request, so a fork PR
+  # or a suspended service can never fail CI. Intentionally not part of the
+  # `test` job above -- that job never receives SMOKE_BASE_URL, so it always
+  # self-skips there.
+  smoke:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Post-deploy /health smoke (skipped when SMOKE_BASE_URL is unset)
+        env:
+          SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL }}
+        run: pnpm exec vitest run tests/smoke.test.ts

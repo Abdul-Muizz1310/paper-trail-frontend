@@ -231,7 +231,7 @@ pnpm test:e2e                # Playwright chromium
 | **Line coverage** | **90.45%** (417/461 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
 | **E2E** | Playwright chromium (mocked mode), fixture `tests/e2e/fixtures/transcript.md` — runs on every PR via the `e2e` CI job |
 | **E2E live smoke** | `L1` scenario in `tests/e2e/debate-flow.spec.ts`, gated by `E2E_LIVE=1` — skipped on every normal PR run, exercised nightly against the real Render backend by `.github/workflows/nightly-e2e.yml` (non-blocking; Render is currently billing-suspended, so it is expected to fail until the service is reactivated) |
-| **Smoke** | `tests/smoke.test.ts` — env-gated live `GET /health` check against a deployed backend; skips unless `SMOKE_HEALTH_URL` is set (never set in CI, since Render is billing-suspended) |
+| **Smoke** | `tests/smoke.test.ts` — env-gated live `GET /health` check against a deployed backend; skips unless `SMOKE_BASE_URL` is set. Not passed to the main `test` job (it always self-skips there); only the dedicated `smoke` job (`.github/workflows/ci.yml`, gated to `push`) receives it, from the `SMOKE_BASE_URL` repository variable |
 | **SSE suite** | 28 cases (`tests/lib/sse.test.ts`): 5 property cases (P1–P3, P5, P6) + 23 failure cases (F1–F12 and sub-variants: lifecycles, retries, cleanup, backoff) |
 | **Methodology** | Red-first spec-TDD. Zod-validated discriminated unions instead of defensive runtime checks. |
 | **Bundle size** | Reproducible client bundle measurement — see [`benchmarks/bundle-size.md`](benchmarks/bundle-size.md) |
