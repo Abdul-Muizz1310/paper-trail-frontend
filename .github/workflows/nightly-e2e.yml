@@ -1,0 +1,31 @@
+name: nightly-e2e-live
+
+# Runs the L1 live-smoke scenario (docs/specs/03-e2e.md "Live smoke") against
+# the real deployed Render backend. Not part of the PR-gating `ci` workflow:
+# Render cold starts + LLM variability make it inherently flaky, and the
+# backend is currently billing-suspended (503), so this is expected to fail
+# until the service is reactivated. `continue-on-error` keeps it non-blocking
+# -- it never fails a PR or a push to main.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      NEXT_PUBLIC_API_URL: https://paper-trail-backend-jjpf.onrender.com
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      E2E_LIVE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test --grep "L1 live smoke"

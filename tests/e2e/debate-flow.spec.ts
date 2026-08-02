@@ -179,3 +179,30 @@ test.describe("debate flow (mocked backend)", () => {
     await expect(page.getByRole("textbox", { name: /claim/i })).toHaveValue("my precious claim");
   });
 });
+
+// See docs/specs/03-e2e.md "Live smoke (nightly, E2E_LIVE=1)". Skipped by
+// default (including on every normal PR run) so it never depends on the
+// live Render backend to keep CI green; run nightly with E2E_LIVE=1 by
+// .github/workflows/nightly-e2e.yml, against the real deployed backend.
+// Expected to be flaky (Render cold start + LLM variability) -- that
+// workflow is non-blocking and pages a notification only, it never fails a PR.
+test.describe("L1 live smoke (nightly only, real backend)", () => {
+  test.skip(!process.env.E2E_LIVE, "set E2E_LIVE=1 to run this against the real deployed backend");
+
+  test("submits a real claim and reaches a TRUE verdict with confidence >= 0.5", async ({
+    page,
+  }) => {
+    test.setTimeout(100_000);
+    await page.goto("/");
+    await page.getByRole("textbox", { name: /claim/i }).fill("The Eiffel Tower is in Paris.");
+    await page.getByRole("button", { name: /start[- ]debate/i }).click();
+
+    await expect(page.getByTestId("judge-verdict")).toHaveAttribute("data-variant", "true", {
+      timeout: 90_000,
+    });
+
+    const confidence = await page.getByTestId("confidence-bar").getAttribute("aria-valuenow");
+    expect(confidence).not.toBeNull();
+    expect(Number(confidence)).toBeGreaterThanOrEqual(0.5);
+  });
+});

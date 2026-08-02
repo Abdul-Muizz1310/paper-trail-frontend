@@ -11,7 +11,7 @@
 ![tailwind](https://img.shields.io/badge/Tailwind-v4-06b6d4?style=flat-square&logo=tailwindcss&logoColor=white)
 ![zod](https://img.shields.io/badge/Zod-boundaries-3068b7?style=flat-square)
 ![vercel](https://img.shields.io/badge/Vercel-deployed-000000?style=flat-square&logo=vercel&logoColor=white)
-![tests](https://img.shields.io/badge/tests-182%20Vitest-6e9f18?style=flat-square)
+![tests](https://img.shields.io/badge/tests-186%20Vitest-6e9f18?style=flat-square)
 ![biome](https://img.shields.io/badge/lint-Biome-60a5fa?style=flat-square)
 ![rc](https://img.shields.io/badge/react--compiler-enabled-ff69b4?style=flat-square)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
@@ -227,11 +227,14 @@ pnpm test:e2e                # Playwright chromium
 
 | Metric | Value |
 |---|---|
-| **Unit tests** | 182 tests (Vitest + jsdom) |
-| **Line coverage** | **90.4%** (405/448 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
+| **Unit tests** | 186 tests (Vitest + jsdom; 185 passed, 1 skipped) |
+| **Line coverage** | **90.45%** (417/461 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
 | **E2E** | Playwright chromium (mocked mode), fixture `tests/e2e/fixtures/transcript.md` — runs on every PR via the `e2e` CI job |
+| **E2E live smoke** | `L1` scenario in `tests/e2e/debate-flow.spec.ts`, gated by `E2E_LIVE=1` — skipped on every normal PR run, exercised nightly against the real Render backend by `.github/workflows/nightly-e2e.yml` (non-blocking; Render is currently billing-suspended, so it is expected to fail until the service is reactivated) |
+| **Smoke** | `tests/smoke.test.ts` — env-gated live `GET /health` check against a deployed backend; skips unless `SMOKE_HEALTH_URL` is set (never set in CI, since Render is billing-suspended) |
 | **SSE suite** | 28 cases (`tests/lib/sse.test.ts`): 5 property cases (P1–P3, P5, P6) + 23 failure cases (F1–F12 and sub-variants: lifecycles, retries, cleanup, backoff) |
 | **Methodology** | Red-first spec-TDD. Zod-validated discriminated unions instead of defensive runtime checks. |
+| **Bundle size** | Reproducible client bundle measurement — see [`benchmarks/bundle-size.md`](benchmarks/bundle-size.md) |
 
 ---
 
@@ -252,10 +255,10 @@ pnpm test:e2e                # Playwright chromium
 
 Hosted on **Vercel**. Push to `main` → Vercel build → preview URL → promote to prod.
 
-> ⚠️ **Production URL:** the live frontend URL is only recoverable from the Vercel
-> dashboard for this project. Once confirmed, set it as `NEXT_PUBLIC_SITE_URL`
-> (production env) and replace the placeholder in the header link above. Until then
-> the canonical URL / OG tags fall back to `http://localhost:3000`.
+> **Production URL:** live at [paper-trail-frontend-sable.vercel.app](https://paper-trail-frontend-sable.vercel.app)
+> (see the header link above). `NEXT_PUBLIC_SITE_URL` is set to that URL in the
+> production Vercel environment; it only falls back to `http://localhost:3000`
+> in local dev and CI.
 
 Required env vars at build time:
 

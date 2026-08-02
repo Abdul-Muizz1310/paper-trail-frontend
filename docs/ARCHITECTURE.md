@@ -116,7 +116,7 @@ sequenceDiagram
 | **Hook / lib unit tests** | Vitest + jsdom | `tests/lib/*.test.ts` -- SSE tested via `FakeEventSource` mock, schemas tested with valid/invalid fixtures |
 | **SSE hardening** | `FakeEventSource` (`tests/lib/fake-event-source.ts`) | Simulates event streams, connection drops, and malformed payloads without a real backend |
 | **Schema hardening** | `tests/lib/schemas-hardening.test.ts` | Ensures zod schemas reject malformed payloads, unknown fields, and type mismatches |
-| **E2E** | Playwright | `tests/e2e/debate-flow.spec.ts` -- full claim-to-verdict flow against a running backend |
-| **Smoke** | Vitest | `tests/smoke.test.ts` -- basic import/render sanity check |
+| **E2E** | Playwright | `tests/e2e/debate-flow.spec.ts` -- full claim-to-verdict flow, backend calls mocked via `route.fulfill` (deterministic, no live backend needed); runs on every PR. Plus one live-backend scenario (`L1`, gated by `E2E_LIVE=1`), scheduled nightly and non-blocking -- see `docs/specs/03-e2e.md` |
+| **Smoke** | Vitest | `tests/smoke.test.ts` -- env-gated live `GET /health` check against a deployed backend; skips unless `SMOKE_HEALTH_URL` is set |
 
 Test commands: `pnpm test` (Vitest unit + lib), `pnpm test:e2e` (Playwright).
