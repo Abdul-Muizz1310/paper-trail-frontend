@@ -9,3 +9,20 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # react/react-dom and playwright/@playwright/test are each pinned to one
+    # version and must be raised together. Ungrouped, dependabot opens a PR per
+    # package and lifts half a pair, which fails in a way that never names the
+    # cause: a react/react-dom skew breaks every component suite, and a
+    # playwright skew reports "No tests found". Exact names, not prefixes, so
+    # "react" cannot sweep in react-is.
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      playwright:
+        patterns:
+          - "playwright"
+          - "@playwright/test"
