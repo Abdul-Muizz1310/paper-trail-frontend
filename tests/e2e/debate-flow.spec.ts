@@ -72,6 +72,16 @@ test.describe("debate flow (mocked backend)", () => {
 
   test("P1 happy path: submit claim → stream → verdict → transcript", async ({ page }) => {
     let getCallCount = 0;
+    // Completion is tied to the stream's lifecycle, never to a GET count.
+    // DebateView invalidates the debate query from SSE state events *and*
+    // once more on the terminal event, and React Query coalesces concurrent
+    // refetches of the same key — so when a state-event refetch is still in
+    // flight as the done event lands, the two collapse into a single request.
+    // How many GETs the page issues is therefore a function of machine speed.
+    // The old mock only reported `done` on the 3rd GET, so a slow runner saw
+    // 2 and the verdict never arrived: that is what timed out here, three
+    // retries deep, while the same test passed on faster runs.
+    let streamCompleted = false;
 
     await page.route(`${API}/debates`, async (route, request) => {
       if (request.method() !== "POST") return route.fallback();
@@ -87,15 +97,18 @@ test.describe("debate flow (mocked backend)", () => {
     await page.route(`${API}/debates/${DEBATE_ID}`, async (route, request) => {
       if (request.method() !== "GET") return route.fallback();
       getCallCount += 1;
-      // Progress: first call → 1 round, then 2, then complete with
-      // transcript_md populated (used by the transcript page).
-      const rounds = Math.min(getCallCount, 3);
-      const done = getCallCount >= 3;
-      return cors(route, { body: debateJson(rounds, done, done) });
+      // Before the stream finishes: running, with rounds accumulating. After
+      // it finishes: complete, with transcript_md populated for the
+      // transcript page. Every ordering now converges on the verdict, so no
+      // path can stall waiting for an Nth call that never comes.
+      const rounds = streamCompleted ? 3 : Math.min(getCallCount, 2);
+      return cors(route, {
+        body: debateJson(rounds, streamCompleted, streamCompleted),
+      });
     });
 
     await page.route(`${API}/debates/${DEBATE_ID}/stream`, async (route) => {
-      return cors(route, {
+      const served = cors(route, {
         contentType: "text/event-stream",
         body: sseBody([
           [
@@ -112,6 +125,12 @@ test.describe("debate flow (mocked backend)", () => {
           ],
         ]),
       });
+      // The body carries the terminal event, so once it is handed to the
+      // browser the debate is complete as far as the backend is concerned.
+      // Set the flag after fulfilling so a GET racing the stream still sees
+      // the running snapshot rather than a half-applied one.
+      await served;
+      streamCompleted = true;
     });
 
     await page.goto("/");
