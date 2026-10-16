@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { BackendStatus } from "@/components/BackendStatus";
 import { PageFrame } from "@/components/terminal/PageFrame";
 import { Prompt } from "@/components/terminal/Prompt";
 import { TerminalWindow } from "@/components/terminal/TerminalWindow";
 import { HomeClaimForm } from "./_home/HomeClaimForm";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default function HomePage() {
   // NOTE: the live backend health signal is the <BackendStatus /> pill in the
