@@ -125,6 +125,27 @@ describe("useDebateStream — pass cases", () => {
   });
 });
 
+describe("useDebateStream — transport (spec 05)", () => {
+  it("P16 opens the stream through the same-origin proxy, never the backend's origin", () => {
+    renderHook(() => useDebateStream(DEBATE_ID));
+    expect(FakeEventSource.last().url).toBe(`/api/backend/debates/${DEBATE_ID}/stream`);
+    expect(FakeEventSource.last().url).not.toContain(API_URL);
+  });
+
+  it("P16 a reconnect opens the same proxy URL again", () => {
+    vi.useFakeTimers();
+    // A stable reference: a new function per render would restart the effect.
+    const backoffMs = () => 10;
+    renderHook(() => useDebateStream(DEBATE_ID, { backoffMs }));
+    act(() => FakeEventSource.last().fail());
+    act(() => {
+      vi.advanceTimersByTime(20);
+    });
+    expect(FakeEventSource.instances.length).toBe(2);
+    expect(FakeEventSource.last().url).toBe(`/api/backend/debates/${DEBATE_ID}/stream`);
+  });
+});
+
 describe("useDebateStream — failure cases (negative space)", () => {
   it("F1 error event with reason:not_found → terminal, no retry", async () => {
     const { result } = renderHook(() => useDebateStream(DEBATE_ID));

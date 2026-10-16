@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { env } from "@/lib/env";
+import { type BackendPath, backendUrl } from "@/lib/backend-url";
 import { type Debate, DebateCreateOutSchema, DebateSchema } from "@/lib/schemas";
 
 class ApiError extends Error {
@@ -27,10 +27,10 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 
 type JsonFetchInit = RequestInit & { timeoutMs?: number };
 
-async function jsonFetch(path: string, init?: JsonFetchInit): Promise<unknown> {
-  // NOTE: only set content-type when we have a body. Adding it to a
-  // cross-origin GET turns it into a non-simple request and forces a
-  // CORS preflight, which the backend rejects for test/mocked setups.
+async function jsonFetch(path: BackendPath, init?: JsonFetchInit): Promise<unknown> {
+  // Same-origin: every call goes through the signing proxy (spec 05), which
+  // forwards content-type only when the browser sent one. Only set it when
+  // there is a body, so a GET stays a plain request.
   const { timeoutMs = DEFAULT_TIMEOUT_MS, ...requestInit } = init ?? {};
   const headers: Record<string, string> = {
     ...(requestInit.headers as Record<string, string> | undefined),
@@ -46,7 +46,7 @@ async function jsonFetch(path: string, init?: JsonFetchInit): Promise<unknown> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, {
+    const res = await fetch(backendUrl(path), {
       ...requestInit,
       headers,
       signal: controller.signal,

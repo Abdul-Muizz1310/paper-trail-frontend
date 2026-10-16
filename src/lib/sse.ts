@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { env } from "@/lib/env";
+import { backendUrl } from "@/lib/backend-url";
 import {
   type DoneEvent,
   DoneEventSchema,
@@ -112,8 +112,9 @@ export function useDebateStream(
 
     const connect = () => {
       if (terminatedRef.current) return;
-      const url = `${env.NEXT_PUBLIC_API_URL}/debates/${debateId}/stream`;
-      const es = new EventSource(url);
+      // EventSource cannot send headers, so the stream must go through the
+      // signing proxy (spec 05); it never opens on the backend's origin.
+      const es = new EventSource(backendUrl(`/debates/${debateId}/stream`));
       esRef.current = es;
 
       // Cap the connecting phase — if the server doesn't respond within

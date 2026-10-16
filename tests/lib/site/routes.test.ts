@@ -39,9 +39,9 @@ describe("manifest", () => {
 });
 
 describe("robots and sitemap", () => {
-  it("P5 allows the whole site and names the sitemap", () => {
+  it("P5 allows the whole site but the backend proxy, and names the sitemap", () => {
     expect(robots()).toEqual({
-      rules: [{ userAgent: "*", allow: "/" }],
+      rules: [{ userAgent: "*", allow: "/", disallow: ["/api/"] }],
       sitemap: "https://paper-trail-frontend-sable.vercel.app/sitemap.xml",
     });
   });

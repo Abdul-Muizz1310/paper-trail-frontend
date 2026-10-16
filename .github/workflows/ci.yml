@@ -48,12 +48,23 @@ jobs:
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # Spec 05 §4: the signing key's name and the minting code never reach a
+      # client bundle.
+      - name: No signing code in client bundles
+        run: |
+          if grep -rlE 'PAPER_TRAIL_FRONTEND_SIGNING_KEY_PRIVATE|createPrivateKey' .next/static; then
+            echo "signing code leaked into .next/static" >&2
+            exit 1
+          fi
 
   e2e:
     needs: build
     runs-on: ubuntu-latest
-    # Mocked mode: the Playwright suite intercepts all backend calls with
-    # route.fulfill, so no live backend is needed and the run is deterministic.
+    # Mocked mode, no live backend: the UI specs fulfil /api/backend/** in the
+    # browser, and proxy.spec.ts drives the real proxy against a local mock
+    # backend (tests/e2e/global-setup.ts) with a throwaway key pair that
+    # playwright.config.ts generates per run. NEXT_PUBLIC_API_URL below is
+    # overridden for the dev server by playwright.config.ts.
     env:
       NEXT_PUBLIC_API_URL: https://paper-trail-backend-jjpf.onrender.com
       NEXT_PUBLIC_SITE_URL: http://localhost:3000

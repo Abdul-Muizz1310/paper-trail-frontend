@@ -4,27 +4,20 @@ import { expect, type Route, test } from "@playwright/test";
 
 // Valid RFC 4122 v4 UUID (version=4, variant=8..b). Zod v4 enforces this.
 const DEBATE_ID = "11111111-1111-4111-8111-111111111111";
-// Host of the mocked backend. Routes must be scoped to this host or they
-// would also match the Next.js app's own URL (localhost:3000/debates/ID).
-const API = "https://paper-trail-backend-jjpf.onrender.com";
+// Browser calls go to the frontend's own signing proxy (spec 05), so the
+// mocks match its prefix; scoping them to it keeps them off the app's own
+// /debates/ID page. The proxy itself is driven, unmocked, by proxy.spec.ts.
+const API = "**/api/backend";
 const TRANSCRIPT_MD = readFileSync(path.join(__dirname, "fixtures", "transcript.md"), "utf-8");
 
-const CORS_HEADERS = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET, POST, OPTIONS",
-  "access-control-allow-headers": "*",
-} as const;
-
-/**
- * Fulfill a route with permissive CORS headers. The mocked backend must
- * look CORS-friendly because our frontend talks to a different origin
- * (the real Render URL) during the test.
- */
-async function cors(route: Route, opts: { status?: number; contentType?: string; body?: string }) {
+/** Answer a proxied call in the browser. Same-origin, so no CORS headers. */
+async function fulfill(
+  route: Route,
+  opts: { status?: number; contentType?: string; body?: string },
+) {
   return route.fulfill({
     status: opts.status ?? 200,
     contentType: opts.contentType ?? "application/json",
-    headers: { ...CORS_HEADERS },
     body: opts.body ?? "",
   });
 }
@@ -52,24 +45,7 @@ function debateJson(rounds: number, done = false, withTranscript = false) {
   });
 }
 
-/**
- * Blanket OPTIONS handler for cross-origin preflights. Matches any
- * backend path so the real Render host never gets touched during tests.
- */
-async function registerPreflight(page: import("@playwright/test").Page) {
-  await page.route(`${API}/**`, async (route, request) => {
-    if (request.method() === "OPTIONS") {
-      return cors(route, { status: 204 });
-    }
-    return route.fallback();
-  });
-}
-
 test.describe("debate flow (mocked backend)", () => {
-  test.beforeEach(async ({ page }) => {
-    await registerPreflight(page);
-  });
-
   test("P1 happy path: submit claim → stream → verdict → transcript", async ({ page }) => {
     let getCallCount = 0;
     // Completion is tied to the stream's lifecycle, never to a GET count.
@@ -85,7 +61,7 @@ test.describe("debate flow (mocked backend)", () => {
 
     await page.route(`${API}/debates`, async (route, request) => {
       if (request.method() !== "POST") return route.fallback();
-      return cors(route, {
+      return fulfill(route, {
         status: 201,
         body: JSON.stringify({
           debate_id: DEBATE_ID,
@@ -102,13 +78,13 @@ test.describe("debate flow (mocked backend)", () => {
       // transcript page. Every ordering now converges on the verdict, so no
       // path can stall waiting for an Nth call that never comes.
       const rounds = streamCompleted ? 3 : Math.min(getCallCount, 2);
-      return cors(route, {
+      return fulfill(route, {
         body: debateJson(rounds, streamCompleted, streamCompleted),
       });
     });
 
     await page.route(`${API}/debates/${DEBATE_ID}/stream`, async (route) => {
-      const served = cors(route, {
+      const served = fulfill(route, {
         contentType: "text/event-stream",
         body: sseBody([
           [
@@ -159,10 +135,10 @@ test.describe("debate flow (mocked backend)", () => {
 
   test("F2 backend 404 on debate → error state with Go home link", async ({ page }) => {
     await page.route(`${API}/debates/${DEBATE_ID}`, (route) =>
-      cors(route, { status: 404, body: '{"detail":"debate not found"}' }),
+      fulfill(route, { status: 404, body: '{"detail":"debate not found"}' }),
     );
     await page.route(`${API}/debates/${DEBATE_ID}/stream`, (route) =>
-      cors(route, {
+      fulfill(route, {
         contentType: "text/event-stream",
         body: sseBody([["error", { reason: "not_found" }]]),
       }),
@@ -174,10 +150,10 @@ test.describe("debate flow (mocked backend)", () => {
 
   test("F3 transcript backend error → transcript-error state", async ({ page }) => {
     await page.route(`${API}/debates/${DEBATE_ID}`, (route) =>
-      cors(route, { status: 404, body: '{"detail":"debate not found"}' }),
+      fulfill(route, { status: 404, body: '{"detail":"debate not found"}' }),
     );
     await page.route(`${API}/debates/${DEBATE_ID}/stream`, (route) =>
-      cors(route, {
+      fulfill(route, {
         contentType: "text/event-stream",
         body: sseBody([["error", { reason: "not_found" }]]),
       }),
@@ -189,7 +165,7 @@ test.describe("debate flow (mocked backend)", () => {
   test("F4 POST /debates fails → inline error + claim preserved", async ({ page }) => {
     await page.route(`${API}/debates`, async (route, request) => {
       if (request.method() !== "POST") return route.fallback();
-      return cors(route, { status: 500, body: '{"detail":"boom"}' });
+      return fulfill(route, { status: 500, body: '{"detail":"boom"}' });
     });
     await page.goto("/");
     await page.getByRole("textbox", { name: /claim/i }).fill("my precious claim");

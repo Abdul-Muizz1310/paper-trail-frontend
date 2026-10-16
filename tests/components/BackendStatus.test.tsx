@@ -126,6 +126,15 @@ describe("BackendStatus", () => {
     expect(screen.queryByText(/waking up/)).toBeNull();
   });
 
+  it("P16 (spec 05) pings /health through the same-origin proxy, never the backend's origin", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response("{}", { status: 200 })));
+    globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+    render(<BackendStatus />);
+    await act(() => Promise.resolve());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((fetchMock.mock.calls[0] as unknown[])[0]).toBe("/api/backend/health");
+  });
+
   it("F3 abort controller cancels fetch on unmount", () => {
     const abortSpy = vi.spyOn(AbortController.prototype, "abort");
     globalThis.fetch = vi.fn(() => new Promise<Response>(() => {}));

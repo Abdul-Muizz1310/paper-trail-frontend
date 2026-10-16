@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { env } from "@/lib/env";
+import { backendUrl } from "@/lib/backend-url";
 
 type Status =
   | { kind: "checking" }
@@ -17,9 +17,11 @@ const PROBE_TIMEOUT_MS = 10_000;
 
 /**
  * Inline status pill shown on the home page. Pings /health once on
- * mount. If the response takes longer than COLD_THRESHOLD_MS the pill
- * warns the user the backend is likely waking from a Render cold
- * start (adds ~20s to the first debate).
+ * mount, through the same signing proxy every other call takes (spec 05),
+ * so "OK" means the path a debate uses works, not only the backend. If
+ * the response takes longer than COLD_THRESHOLD_MS the pill warns the
+ * user the backend is likely waking from a Render cold start (adds ~20s
+ * to the first debate).
  */
 export function BackendStatus() {
   const [status, setStatus] = useState<Status>({ kind: "checking" });
@@ -36,7 +38,7 @@ export function BackendStatus() {
     // .catch() below flips the pill to "down" instead of leaving it on
     // the cold-start hint indefinitely.
     const probeTimer = window.setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
-    fetch(`${env.NEXT_PUBLIC_API_URL}/health`, {
+    fetch(backendUrl("/health"), {
       signal: controller.signal,
       cache: "no-store",
     })

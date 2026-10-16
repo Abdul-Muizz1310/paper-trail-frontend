@@ -5,9 +5,10 @@
 ```mermaid
 flowchart LR
     User([User]) -->|enters claim| Home[/"/" Home page/]
-    Home -->|POST /debates| API[[paper-trail-backend<br/>FastAPI + LangGraph]]
-    API -->|debate_id| DebatePage[/"/debates/[id]" page/]
-    DebatePage -->|SSE /debates/:id/stream| Hook[useDebateStream hook]
+    Home -->|POST /api/backend/debates| Proxy["/api/backend/... route<br/>(signs X-Platform-Token)"]
+    Proxy -->|signed, streamed| API[[paper-trail-backend<br/>FastAPI + LangGraph]]
+    Proxy -->|debate_id| DebatePage[/"/debates/[id]" page/]
+    DebatePage -->|SSE /api/backend/debates/:id/stream| Hook[useDebateStream hook]
     Hook -->|patch in place; invalidate only on terminal| Query[(TanStack Query cache)]
     Query --> Arena[DebateArena]
     Arena --> ProPanel[Pro AgentPanel]
@@ -15,8 +16,15 @@ flowchart LR
     Query --> Verdict[JudgeVerdict]
     Query --> Confidence[ConfidenceBar]
     DebatePage -->|link| Transcript[/"/debates/[id]/transcript"/]
-    Transcript -->|GET /debates/:id| API
+    Transcript -->|GET /api/backend/debates/:id| Proxy
 ```
+
+Every browser call goes to the same-origin proxy `/api/backend/...`
+(`src/app/api/backend/[...path]/route.ts`), never to the backend's origin: the backend demands a
+platform token and `EventSource` cannot send headers. The proxy mints a fresh 60-second Ed25519
+token per upstream request from the server-only `PAPER_TRAIL_FRONTEND_SIGNING_KEY_PRIVATE`,
+forwards an allowlist of headers both ways, and streams the body back unbuffered. See
+[spec 05](specs/05-backend-proxy.md).
 
 ## Component map
 
@@ -44,7 +52,7 @@ flowchart TD
 
     subgraph DebateView ["/debates/[id]"]
         Mount["page mount"] --> SSEHook["useDebateStream(id)"]
-        SSEHook -->|EventSource| Backend["Backend SSE endpoint"]
+        SSEHook -->|EventSource via /api/backend proxy| Backend["Backend SSE endpoint"]
         Backend -->|typed SSE frames| Validate["zod schema validation"]
         Validate -->|valid events| Cache["TanStack Query cache<br/>(patched live by the SSE consumer)"]
         Validate -.->|unknown events| Log["console.warn + drop"]
@@ -73,7 +81,7 @@ sequenceDiagram
 
     Page->>Hook: mount(debateId)
     Hook->>Hook: phase = "connecting" (local state)
-    Hook->>ES: new EventSource(/debates/:id/stream)
+    Hook->>ES: new EventSource(/api/backend/debates/:id/stream)
 
     ES-->>Hook: event: plan_complete
     Hook->>Zod: parse(payload)
@@ -107,6 +115,7 @@ sequenceDiagram
 3. **Env validated at import** -- `env.ts` throws at import time if required env vars (`NEXT_PUBLIC_API_URL`, etc.) are missing. No silent `undefined` leaking into fetch URLs.
 4. **Typed props everywhere** -- all components receive explicitly typed props; no `any` crosses module boundaries.
 5. **Server/client boundary** -- pages are server components that fetch initial data; interactivity lives in `"use client"` components and hooks.
+6. **Signing stays on the server** -- every module under `src/lib/server/` starts with `import "server-only"`, so a client import fails the build; CI also greps `.next/static` for the key's name and `createPrivateKey`.
 
 ## Testing architecture
 
@@ -116,7 +125,7 @@ sequenceDiagram
 | **Hook / lib unit tests** | Vitest + jsdom | `tests/lib/*.test.ts` -- SSE tested via `FakeEventSource` mock, schemas tested with valid/invalid fixtures |
 | **SSE hardening** | `FakeEventSource` (`tests/lib/fake-event-source.ts`) | Simulates event streams, connection drops, and malformed payloads without a real backend |
 | **Schema hardening** | `tests/lib/schemas-hardening.test.ts` | Ensures zod schemas reject malformed payloads, unknown fields, and type mismatches |
-| **E2E** | Playwright | `tests/e2e/debate-flow.spec.ts` -- full claim-to-verdict flow, backend calls mocked via `route.fulfill` (deterministic, no live backend needed); runs on every PR. Plus one live-backend scenario (`L1`, gated by `E2E_LIVE=1`), scheduled nightly and non-blocking -- see `docs/specs/03-e2e.md` |
+| **E2E** | Playwright | `tests/e2e/debate-flow.spec.ts` -- full claim-to-verdict flow, proxied calls (`/api/backend/**`) mocked in the browser via `route.fulfill` (deterministic, no live backend needed); runs on every PR. `tests/e2e/proxy.spec.ts` mocks nothing in the browser and drives the real proxy against a local mock backend that verifies every token with a throwaway key. Plus one live-backend scenario (`L1`, gated by `E2E_LIVE=1`), scheduled nightly and non-blocking -- see `docs/specs/03-e2e.md` |
 | **Smoke** | Vitest | `tests/smoke.test.ts` -- env-gated live `GET /health` check against a deployed backend; skips unless `SMOKE_BASE_URL` is set. Wired into a dedicated `smoke` job in `.github/workflows/ci.yml`, gated to `push` events, sourced from the `SMOKE_BASE_URL` repository variable -- unset/blank self-skips with zero HTTP requests |
 
 Test commands: `pnpm test` (Vitest unit + lib), `pnpm test:e2e` (Playwright).

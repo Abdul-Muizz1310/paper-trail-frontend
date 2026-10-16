@@ -20,6 +20,9 @@ jobs:
       NEXT_PUBLIC_API_URL: https://paper-trail-backend-jjpf.onrender.com
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
       E2E_LIVE: "1"
+      # Browser calls go through the signing proxy (docs/specs/05-backend-proxy.md),
+      # so the live run needs the frontend's key as a repository secret.
+      PAPER_TRAIL_FRONTEND_SIGNING_KEY_PRIVATE: ${{ secrets.PAPER_TRAIL_FRONTEND_SIGNING_KEY_PRIVATE }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v5

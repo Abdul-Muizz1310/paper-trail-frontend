@@ -3,21 +3,14 @@ import { SITE } from "../../src/lib/site/config";
 
 // Valid RFC 4122 v4 UUID, as in debate-flow.spec.ts.
 const DEBATE_ID = "11111111-1111-4111-8111-111111111111";
-// Host of the mocked backend. Routes are scoped to it, so the app's own
-// /debates/ID page is never intercepted.
-const API = "https://paper-trail-backend-jjpf.onrender.com";
+// The frontend's signing proxy (spec 05), where every browser call goes. The
+// mocks are scoped to it, so the app's own /debates/ID page is never intercepted.
+const PROXY = "/api/backend";
 
-const CORS_HEADERS = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET, POST, OPTIONS",
-  "access-control-allow-headers": "*",
-} as const;
-
-function cors(route: Route, opts: { status?: number; contentType?: string; body?: string }) {
+function fulfill(route: Route, opts: { status?: number; contentType?: string; body?: string }) {
   return route.fulfill({
     status: opts.status ?? 200,
     contentType: opts.contentType ?? "application/json",
-    headers: { ...CORS_HEADERS },
     body: opts.body ?? "",
   });
 }
@@ -33,21 +26,20 @@ const DONE_DEBATE = JSON.stringify({
   created_at: "2026-04-09T12:00:00Z",
 });
 
-/** Answer every backend call from here, so no request reaches the real Render host. */
+/** Answer every proxied call in the browser, so none reaches the proxy or a backend. */
 async function mockApi(page: Page) {
-  await page.route(`${API}/**`, (route, request) => {
-    const { pathname } = new URL(request.url());
-    if (request.method() === "OPTIONS") return cors(route, { status: 204 });
-    if (pathname === "/health") return cors(route, { body: '{"status":"ok"}' });
-    if (pathname === `/debates/${DEBATE_ID}`) return cors(route, { body: DONE_DEBATE });
+  await page.route(`**${PROXY}/**`, (route, request) => {
+    const pathname = new URL(request.url()).pathname.slice(PROXY.length);
+    if (pathname === "/health") return fulfill(route, { body: '{"status":"ok"}' });
+    if (pathname === `/debates/${DEBATE_ID}`) return fulfill(route, { body: DONE_DEBATE });
     if (pathname === `/debates/${DEBATE_ID}/stream`) {
       const done = { type: "done", status: "done", verdict: "TRUE", confidence: 0.78 };
-      return cors(route, {
+      return fulfill(route, {
         contentType: "text/event-stream",
         body: `event: done\ndata: ${JSON.stringify(done)}\n\n`,
       });
     }
-    return cors(route, { status: 404, body: '{"detail":"not mocked"}' });
+    return fulfill(route, { status: 404, body: '{"detail":"not mocked"}' });
   });
 }
 

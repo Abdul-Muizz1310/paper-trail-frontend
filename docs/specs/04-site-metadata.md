@@ -81,8 +81,8 @@ it:
 
 - `manifest.webmanifest`: name, short name, description, `start_url` and `scope` `/`,
   `display: standalone`, dark background and theme colours, the three PNG icons.
-- `robots.txt`: allow `/`, disallow only machine endpoints (paper-trail has none: the API lives
-  on the backend's own host), point at the sitemap. Link-preview bots such as Twitterbot obey
+- `robots.txt`: allow `/`, disallow only machine endpoints (paper-trail's one is `/api/`, the
+  backend proxy of spec 05), point at the sitemap. Link-preview bots such as Twitterbot obey
   robots.txt, so disallowing a page would also break its link preview.
 - A page that must stay out of search sets `robots: { index: false }` instead: `/debates/[id]`
   and its transcript, because each is a generated debate on a user's claim. They still get a
@@ -114,7 +114,7 @@ Unit tests live in `tests/lib/site/`; the E2E cases in `tests/e2e/metadata.spec.
   author, Open Graph with no title, description or url, the Twitter card, no `alternates`.
 - **P3** the viewport colours.
 - **P4** the manifest's fields, and every icon it lists exists in `public/` at its declared size.
-- **P5** robots.txt allows the site and names the sitemap on the origin; the sitemap lists `/` as
+- **P5** robots.txt allows the site but `/api/` and names the sitemap on the origin; the sitemap lists `/` as
   an absolute URL, once.
 - **P6** the icon files: `icon.svg` uses the accent, `favicon.ico` holds 16, 32 and 48,
   `apple-icon.png` is 180×180.

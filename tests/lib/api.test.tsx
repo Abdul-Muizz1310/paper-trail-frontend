@@ -196,6 +196,32 @@ describe("useCreateDebate", () => {
 });
 
 /* ---------------------------------------------------------------
+ * Transport (spec 05): browser calls go through the signing proxy
+ * --------------------------------------------------------------- */
+
+describe("transport", () => {
+  const ID = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
+  const firstUrl = () => (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+
+  it("P16 useDebate fetches /api/backend/debates/{id} on the frontend's own origin", async () => {
+    mockFetchOk(DEBATE_RESPONSE);
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useDebate(ID), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(firstUrl()).toBe(`/api/backend/debates/${ID}`);
+  });
+
+  it("P16 useCreateDebate posts to /api/backend/debates, never the backend's origin", async () => {
+    mockFetchOk({ debate_id: ID, stream_url: `/debates/${ID}/stream` });
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useCreateDebate(), { wrapper });
+    await result.current.mutateAsync({ claim: "test" });
+    expect(firstUrl()).toBe("/api/backend/debates");
+    expect(String(firstUrl())).not.toContain("onrender.com");
+  });
+});
+
+/* ---------------------------------------------------------------
  * usePatchDebate
  * --------------------------------------------------------------- */
 

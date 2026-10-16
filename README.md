@@ -62,11 +62,12 @@ The whole app is wrapped in a **terminal-window aesthetic**: grid backgrounds, s
 
 ```mermaid
 flowchart TD
-    Home[HomeClaimForm] -->|POST /debates| Backend[(paper-trail-backend<br/>FastAPI on Render)]
+    Home[HomeClaimForm] -->|POST /api/backend/debates| Proxy["/api/backend/... route<br/>signs X-Platform-Token"]
+    Proxy -->|signed, streamed| Backend[(paper-trail-backend<br/>FastAPI on Render)]
     Home -->|router.push| DebateView[DebateView]
-    DebateView -->|SSE /debates/:id/stream| Backend
+    DebateView -->|SSE /api/backend/debates/:id/stream| Proxy
     DebateView -->|useDebate snapshot + poll| Query[TanStack Query cache]
-    Backend -->|state events| DebateView
+    Proxy -->|state events| DebateView
     DebateView -->|patch| Query
     Query --> Arena[DebateArena]
     Query --> Verdict[JudgeVerdict]
@@ -96,6 +97,8 @@ sequenceDiagram
     Hook-->>UI: phase = done
     UI->>Hook: unmount → cleanup
 ```
+
+**Signed proxy:** the backend demands a platform token on every data route, and `EventSource` cannot send headers, so the browser never calls the backend's origin. Every call (`/health`, REST and the SSE stream) goes to the same-origin route `/api/backend/...`, which mints a 60-second Ed25519 token server-side, forwards an allowlist of headers and streams the answer back unbuffered. See [spec 05](docs/specs/05-backend-proxy.md).
 
 **Streaming model:** SSE is the primary transport. When the backend inlines `rounds[]` in `state` events (v0.1.1+), the cache is patched directly — **no refetch round-trip** while streaming. The only guaranteed `GET /debates/{id}` happens once on the terminal `done` phase to pull the final `transcript_md` (which `state` events don't carry). A 3-second polling fallback runs **only** for legacy backends that omit inline `rounds[]`; once inline rounds are observed the poll switches off so it can't storm the backend.
 
@@ -139,6 +142,8 @@ src/
 │   └── ui/                           # shadcn primitives
 └── lib/
     ├── env.ts                        # Runtime env validation (Zod)
+    ├── backend-url.ts                # /api/backend prefix for browser calls
+    ├── server/                       # server-only: token minting + backend proxy
     ├── api.ts                        # TanStack Query hooks + fetch
     ├── sse.ts                        # useDebateStream() EventSource hook
     ├── schemas.ts                    # Zod schemas + parseRounds/normaliseSide bridge
@@ -197,10 +202,11 @@ pnpm dev
 
 | Var | Purpose |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | FastAPI backend base URL (SSE + REST) |
+| `NEXT_PUBLIC_API_URL` | FastAPI backend base URL, where the `/api/backend` proxy forwards (SSE + REST) |
 | `NEXT_PUBLIC_SITE_URL` | Public canonical URL (OG tags, absolute links) |
+| `PAPER_TRAIL_FRONTEND_SIGNING_KEY_PRIVATE` | Server-only Ed25519 private key (PKCS#8 DER, base64) that signs the proxy's `X-Platform-Token`; the backend holds the public half |
 
-Validated at import time in [`src/lib/env.ts`](src/lib/env.ts) via Zod. Missing vars crash boot — **parse, don't validate**.
+The two `NEXT_PUBLIC_*` vars are validated at import time in [`src/lib/env.ts`](src/lib/env.ts) via Zod. Missing vars crash boot — **parse, don't validate**. The signing key is read per request: missing or malformed, the proxy answers 503 and never sends an unsigned call.
 
 ### 📜 Scripts
 
@@ -229,7 +235,7 @@ pnpm test:e2e                # Playwright chromium
 |---|---|
 | **Unit tests** | 186 tests (Vitest + jsdom; 185 passed, 1 skipped) |
 | **Line coverage** | **90.45%** (417/461 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
-| **E2E** | Playwright chromium (mocked mode), fixture `tests/e2e/fixtures/transcript.md` — runs on every PR via the `e2e` CI job |
+| **E2E** | Playwright chromium (mocked mode), fixture `tests/e2e/fixtures/transcript.md` — runs on every PR via the `e2e` CI job. UI specs fulfil `/api/backend/**` in the browser; `tests/e2e/proxy.spec.ts` drives the real proxy, unmocked, against a local mock backend that verifies every token with a throwaway key |
 | **E2E live smoke** | `L1` scenario in `tests/e2e/debate-flow.spec.ts`, gated by `E2E_LIVE=1` — skipped on every normal PR run, exercised nightly against the real Render backend by `.github/workflows/nightly-e2e.yml` (non-blocking; Render is currently billing-suspended, so it is expected to fail until the service is reactivated) |
 | **Smoke** | `tests/smoke.test.ts` — env-gated live `GET /health` check against a deployed backend; skips unless `SMOKE_BASE_URL` is set. Not passed to the main `test` job (it always self-skips there); only the dedicated `smoke` job (`.github/workflows/ci.yml`, gated to `push`) receives it, from the `SMOKE_BASE_URL` repository variable |
 | **SSE suite** | 28 cases (`tests/lib/sse.test.ts`): 5 property cases (P1–P3, P5, P6) + 23 failure cases (F1–F12 and sub-variants: lifecycles, retries, cleanup, backoff) |
@@ -264,6 +270,8 @@ Required env vars at build time:
 
 - `NEXT_PUBLIC_API_URL`
 - `NEXT_PUBLIC_SITE_URL`
+
+Required at runtime (server-only, never `NEXT_PUBLIC_`): `PAPER_TRAIL_FRONTEND_SIGNING_KEY_PRIVATE`.
 
 Next config: `reactCompiler: true`.
 

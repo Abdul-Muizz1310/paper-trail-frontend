@@ -15,5 +15,6 @@ export const SITE = defineSite({
     highlight: "argue",
   },
   // Debates are generated from a user's claim: /debates/ pages set noindex instead.
-  routes: { sitemap: ["/"], disallow: [] },
+  // /api/ is the backend proxy (spec 05), a machine endpoint.
+  routes: { sitemap: ["/"], disallow: ["/api/"] },
 });

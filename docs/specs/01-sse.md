@@ -2,7 +2,7 @@
 
 ## Scope
 
-A client-side hook, `useDebateStream(debateId)`, that opens an `EventSource` against `${NEXT_PUBLIC_API_URL}/debates/{id}/stream`, ingests typed events, reconnects on disconnect, and exposes a discriminated-union status to React.
+A client-side hook, `useDebateStream(debateId)`, that opens an `EventSource` against `/api/backend/debates/{id}/stream` (the same-origin signing proxy of [spec 05](05-backend-proxy.md); `EventSource` cannot send the backend's token header itself), ingests typed events, reconnects on disconnect, and exposes a discriminated-union status to React.
 
 Lives in [`src/lib/sse.ts`](../../src/lib/sse.ts).
 

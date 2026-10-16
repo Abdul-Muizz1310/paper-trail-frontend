@@ -6,6 +6,10 @@ import { z } from "zod";
  * Only `NEXT_PUBLIC_*` vars are inlined by Next.js on the client, so we
  * reference them as literal `process.env.NEXT_PUBLIC_FOO` (NOT via a
  * dynamic key) to ensure Webpack replaces them at build time.
+ *
+ * `NEXT_PUBLIC_API_URL` is read on the server by the backend proxy
+ * (`src/app/api/backend/[...path]/route.ts`, spec 05); browser code never
+ * calls the backend's origin.
  */
 const EnvSchema = z.object({
   NEXT_PUBLIC_API_URL: z
