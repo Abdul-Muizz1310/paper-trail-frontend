@@ -37,9 +37,15 @@ module.
     (an RSA or X25519 key, or an SPKI public key) → **malformed**.
   The key is read on every request, never at import, so a missing key can never crash the server.
 - **Header.** Exactly `{"alg":"EdDSA","typ":"JWT","kid":"paper-trail-frontend-2026-10"}`.
-- **Claims.** `{"sub":"paper-trail-frontend","role":"frontend","service":"paper-trail","iat":<now>,"exp":<now+60>,"jti":<uuid v4>}`,
+- **Claims.** `{"iss":"paper-trail-frontend","aud":"paper-trail","sub":"paper-trail-frontend","role":"frontend","service":"paper-trail","iat":<now>,"exp":<now+60>,"jti":<uuid v4>}`,
   `iat` in whole seconds (floor). The lifetime is exactly 60 s. A token is minted fresh for every
   upstream request, with a new `jti`.
+- **Contract v2 (2026-10-20).** `iss` and `aud` are the workspace platform token contract v2
+  (`docs/specs/platform-contract-v2.md` §4, DR-0033): the backend accepts a token signed by this
+  frontend's key only with `iss == "paper-trail-frontend"` and `role == "frontend"`, and only when
+  `aud` is exactly the string `"paper-trail"` (another service's id, or a list, is rejected). `aud` is
+  one string, never an array. A contract-v1 backend (PyJWT with no audience configured) rejects a
+  token that carries `aud`, so this ships on branch `contract-v2` and merges after the backend's.
 - **Encoding.** Compact JWS: `base64url(header) "." base64url(claims) "." base64url(signature)`,
   base64url without padding (RFC 7515), the signature `crypto.sign(null, signingInput, key)` over
   the ASCII signing input (the first two parts joined by `.`).
@@ -152,8 +158,9 @@ E2E in `tests/e2e/proxy.spec.ts`.
 
 - **P1** `base64url` matches RFC 4648 §10 vectors without padding and uses `-` and `_`.
 - **P2** the token header is exactly the one in §1.
-- **P3** the claims for a given `now`: `sub`, `role`, `service`, `iat = floor(now / 1000)`,
-  `exp = iat + 60`, the given `jti`, in that order.
+- **P3** the claims for a given `now`: `iss`, `aud`, `sub`, `role`, `service`, `iat = floor(now / 1000)`,
+  `exp = iat + 60`, the given `jti`, in that order; `iss` is `"paper-trail-frontend"` and `aud` the
+  single string `"paper-trail"`.
 - **P4** the signing input is `base64url(JSON(header)) "." base64url(JSON(claims))`.
 - **P5** a minted token has three parts; its signature verifies with `node:crypto` against the
   public key in the backend's format (SPKI DER, base64); header and claims decode to P2 and P3.
@@ -206,3 +213,6 @@ E2E in `tests/e2e/proxy.spec.ts`.
   and is logged; a fetch aborted because the browser left first is not logged.
 - **F11** (E2E) a traversal path sent to the running server never reaches the mock backend.
 - **F12** (build) `.next/static` contains neither the key's variable name nor `createPrivateKey`.
+- **F13** (contract v2) a minted token's `aud` is a string, never an array, and names no other
+  service; its `iss` is never `"bastion"`. The E2E mock backend, like the real one, answers 401 to a
+  token whose `iss` or `aud` is wrong or missing.

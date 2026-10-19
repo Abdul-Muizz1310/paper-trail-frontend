@@ -59,6 +59,8 @@ describe("mintPlatformToken", () => {
       kid: "paper-trail-frontend-2026-10",
     });
     expect(decodePart(parts[1])).toEqual({
+      iss: "paper-trail-frontend",
+      aud: "paper-trail",
       sub: "paper-trail-frontend",
       role: "frontend",
       service: "paper-trail",

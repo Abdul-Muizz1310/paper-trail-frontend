@@ -8,7 +8,9 @@ import path from "node:path";
  *
  * Like the real backend with DEMO_MODE=false, every route but /health demands
  * an X-Platform-Token that verifies against the frontend's public key, with
- * `service: "paper-trail"` and `role: "frontend"`; anything else gets 401. It
+ * platform contract v2's `iss: "paper-trail-frontend"` and `aud: "paper-trail"`
+ * (one string), `service: "paper-trail"` and `role: "frontend"`; anything else
+ * gets 401. It
  * records what it received so a test can inspect it, and holds each debate's
  * stream open after the first event until the test releases it.
  *
@@ -78,6 +80,8 @@ export function checkToken(token: string | null, key: KeyObject, nowS: number): 
     return { valid: false, reason: "signature" };
   }
   if (typeof claims.exp !== "number" || claims.exp <= nowS) return { valid: false, reason: "exp" };
+  if (claims.iss !== "paper-trail-frontend") return { valid: false, reason: "iss" };
+  if (claims.aud !== "paper-trail") return { valid: false, reason: "aud" };
   if (claims.service !== "paper-trail") return { valid: false, reason: "service" };
   if (claims.role !== "frontend") return { valid: false, reason: "role" };
   return { valid: true, header, claims };
