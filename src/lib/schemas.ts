@@ -178,6 +178,15 @@ export const DoneEventSchema = z.object({
 });
 export type DoneEvent = z.infer<typeof DoneEventSchema>;
 
+/**
+ * The backend closes every stream after its per-connection cap with
+ * `{ type: "done", reason: "timeout" }` and no `status`, even while the
+ * debate is still running (spec 01). That is a cut to renew, not the end.
+ */
+export function isStreamCut(ev: DoneEvent): boolean {
+  return ev.reason === "timeout" && ev.status === undefined;
+}
+
 /** Terminal reasons that should NOT trigger a reconnect. */
 const TERMINAL_ERROR_REASONS = ["not_found", "gone"] as const;
 

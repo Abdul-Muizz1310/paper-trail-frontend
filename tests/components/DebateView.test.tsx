@@ -163,4 +163,29 @@ describe("DebateView — terminal rendering", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/couldn.t load this debate/i);
     expect(screen.getByRole("link", { name: /go home/i })).toBeInTheDocument();
   });
+
+  it.each([
+    "error",
+    "failed",
+  ])("F8 a debate that ended with status %s says it failed, with no verdict or transcript link", (status) => {
+    streamPhase = { kind: "done", final: { type: "done", status } };
+    debateQuery = {
+      data: { ...baseDebate, status, verdict: null, confidence: null },
+      isPending: false,
+      isError: false,
+    };
+    render(<DebateView debateId={DEBATE_ID} />);
+    const failed = screen.getByTestId("debate-failed");
+    expect(failed).toHaveAttribute("role", "alert");
+    expect(failed).toHaveTextContent(/failed before reaching a verdict/i);
+    expect(screen.getByRole("link", { name: /go home/i })).toHaveAttribute("href", "/");
+    expect(screen.queryByTestId("judge-verdict")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /transcript/i })).not.toBeInTheDocument();
+  });
+
+  it("F8 a debate that is still running shows no failure box", () => {
+    streamPhase = { kind: "streaming", lastState: stateEvent(1, true) };
+    render(<DebateView debateId={DEBATE_ID} />);
+    expect(screen.queryByTestId("debate-failed")).not.toBeInTheDocument();
+  });
 });

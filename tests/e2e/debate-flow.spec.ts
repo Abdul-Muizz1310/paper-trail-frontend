@@ -123,6 +123,89 @@ test.describe("debate flow (mocked backend)", () => {
     await expect(page.getByRole("heading", { name: /final reasoning/i })).toBeVisible();
   });
 
+  test("P2 a stream cut (done + reason timeout) is renewed and the verdict still arrives", async ({
+    page,
+  }) => {
+    // The backend closes every stream after 120 s with {type:"done",
+    // reason:"timeout"} while the debate keeps running (spec 01). The page
+    // must reopen the stream, not freeze without a verdict.
+    let streamCalls = 0;
+    let finished = false;
+    await page.route(`${API}/debates/${DEBATE_ID}`, async (route, request) => {
+      if (request.method() !== "GET") return route.fallback();
+      return fulfill(route, { body: debateJson(finished ? 3 : 1, finished, finished) });
+    });
+    await page.route(`${API}/debates/${DEBATE_ID}/stream`, async (route) => {
+      streamCalls += 1;
+      if (streamCalls === 1) {
+        return fulfill(route, {
+          contentType: "text/event-stream",
+          body: sseBody([
+            [
+              "state",
+              {
+                type: "state",
+                status: "running",
+                verdict: null,
+                confidence: null,
+                rounds_count: 1,
+              },
+            ],
+            ["done", { type: "done", reason: "timeout" }],
+          ]),
+        });
+      }
+      const served = fulfill(route, {
+        contentType: "text/event-stream",
+        body: sseBody([
+          [
+            "state",
+            { type: "state", status: "done", verdict: "TRUE", confidence: 0.78, rounds_count: 3 },
+          ],
+          [
+            "done",
+            { type: "done", status: "done", verdict: "TRUE", confidence: 0.78, rounds_count: 3 },
+          ],
+        ]),
+      });
+      await served;
+      finished = true;
+    });
+
+    await page.goto(`/debates/${DEBATE_ID}`);
+    await expect(page.getByTestId("judge-verdict")).toHaveAttribute("data-variant", "true", {
+      timeout: 10_000,
+    });
+    expect(streamCalls).toBe(2);
+  });
+
+  test("F5 a debate that ends in error says it failed instead of waiting for a verdict", async ({
+    page,
+  }) => {
+    await page.route(`${API}/debates/${DEBATE_ID}`, async (route, request) => {
+      if (request.method() !== "GET") return route.fallback();
+      return fulfill(route, {
+        body: JSON.stringify({ ...JSON.parse(debateJson(2)), status: "error" }),
+      });
+    });
+    await page.route(`${API}/debates/${DEBATE_ID}/stream`, (route) =>
+      fulfill(route, {
+        contentType: "text/event-stream",
+        body: sseBody([
+          [
+            "state",
+            { type: "state", status: "error", verdict: null, confidence: null, rounds_count: 2 },
+          ],
+          ["done", { type: "done", status: "error", verdict: null, confidence: null }],
+        ]),
+      }),
+    );
+    await page.goto(`/debates/${DEBATE_ID}`);
+    await expect(page.getByTestId("debate-failed")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("judge-verdict")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /transcript/i })).toHaveCount(0);
+  });
+
   test("F1 invalid UUID route → 404 and zero stream requests", async ({ page }) => {
     const streamRequests: string[] = [];
     page.on("request", (req) => {

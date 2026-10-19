@@ -43,3 +43,9 @@ No auth. No user accounts. A debate ID is the only handle to a debate.
 - **F5** `/debates/[id]/transcript` — `transcript_md` is empty/`null` → page renders an empty transcript, not a broken markdown shell or a crash.
 - **F6** `/` — submitting an empty claim is blocked client-side; `POST` is never issued.
 - **F7** `/` — submitting a claim >2000 chars is blocked client-side with an inline error matching the backend validation.
+- **F8** `/debates/[id]` — the debate ends with `status: "error"` (or `"failed"`) and no verdict → the
+  page shows a `role="alert"` box (`data-testid="debate-failed"`) saying the debate failed before
+  reaching a verdict, with a Go-home link, and no transcript link (`transcript.md` answers 409 for a
+  debate that is not `done`). Never a silent "done" with an empty arena: a failed run used to look
+  exactly like a stalled one, which is how the nightly live smoke could only report
+  "`judge-verdict` not found".

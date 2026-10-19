@@ -25,6 +25,22 @@ function splitRounds(rounds: Round[]): { pro: Round[]; con: Round[] } {
 
 const POLL_INTERVAL_MS = 3000;
 
+/** Backend statuses that end a debate without a verdict (spec 00 F8). */
+const FAILED_STATUSES: ReadonlySet<string> = new Set(["error", "failed"]);
+
+function GoHomeLink() {
+  return (
+    <Link
+      href="/"
+      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 font-mono text-xs text-fg-muted transition-colors hover:border-accent-cyan/40 hover:text-accent-cyan"
+    >
+      <span className="text-accent-cyan">$</span>
+      <span>cd ..</span>
+      <span className="text-fg-faint">{"//"} go home</span>
+    </Link>
+  );
+}
+
 export function DebateView({ debateId }: Props) {
   const debateQuery = useDebate(debateId);
   const invalidate = useInvalidateDebate(debateId);
@@ -120,14 +136,7 @@ export function DebateView({ debateId }: Props) {
             <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-error/70">[error]</div>
             Couldn&apos;t load this debate.
           </div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 font-mono text-xs text-fg-muted transition-colors hover:border-accent-cyan/40 hover:text-accent-cyan"
-          >
-            <span className="text-accent-cyan">$</span>
-            <span>cd ..</span>
-            <span className="text-fg-faint">{"//"} go home</span>
-          </Link>
+          <GoHomeLink />
         </div>
       );
     }
@@ -148,6 +157,8 @@ export function DebateView({ debateId }: Props) {
       streamPhase.kind === "error" ? "error" : isTerminal ? "done" : "streaming";
 
     const showVerdict = isTerminal && d.verdict !== null && d.confidence !== null;
+    // A run that ended without a verdict must say so, never look stalled.
+    const failed = isTerminal && FAILED_STATUSES.has(d.status) && d.verdict === null;
 
     const reasoning = extractJudgeReasoning(d.transcript_md);
 
@@ -174,7 +185,23 @@ export function DebateView({ debateId }: Props) {
           />
         )}
 
-        {isTerminal && (
+        {failed && (
+          <div className="flex flex-col items-start gap-4">
+            <div
+              role="alert"
+              data-testid="debate-failed"
+              className="rounded-lg border border-error/40 bg-error/10 p-4 font-mono text-sm text-error"
+            >
+              <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-error/70">
+                [{d.status}]
+              </div>
+              This debate failed before reaching a verdict.
+            </div>
+            <GoHomeLink />
+          </div>
+        )}
+
+        {isTerminal && !failed && (
           <div>
             <Link
               href={`/debates/${debateId}/transcript`}

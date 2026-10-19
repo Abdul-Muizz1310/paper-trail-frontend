@@ -6,6 +6,7 @@ import {
   type DoneEvent,
   DoneEventSchema,
   ErrorEventSchema,
+  isStreamCut,
   isTerminalErrorReason,
   type StateEvent,
   StateEventSchema,
@@ -23,6 +24,8 @@ export type StreamPhase =
 
 export type UseDebateStreamOptions = {
   maxRetries?: number;
+  /** Stream cuts (`done` + `reason: "timeout"`, spec 01) renewed before giving up. */
+  maxRenewals?: number;
   backoffMs?: (attempt: number) => number;
   /** Maximum time (ms) to wait for the initial connection to open. */
   connectTimeoutMs?: number;
@@ -37,6 +40,8 @@ const DEFAULT_BACKOFF = (attempt: number) => {
 };
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
+/** The backend cuts a stream every 120 s; five renewals cover 10+ minutes of debate. */
+const DEFAULT_MAX_RENEWALS = 5;
 
 function parseJson(data: unknown): unknown {
   if (typeof data !== "string") return data;
@@ -62,6 +67,7 @@ export function useDebateStream(
 ): { phase: StreamPhase; close: () => void } {
   const {
     maxRetries = 5,
+    maxRenewals = DEFAULT_MAX_RENEWALS,
     backoffMs = DEFAULT_BACKOFF,
     connectTimeoutMs = DEFAULT_CONNECT_TIMEOUT_MS,
     onStateChange,
@@ -72,6 +78,7 @@ export function useDebateStream(
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const attemptRef = useRef(0);
+  const renewalsRef = useRef(0);
   const terminatedRef = useRef(false);
   const onStateChangeRef = useRef(onStateChange);
   onStateChangeRef.current = onStateChange;
@@ -79,6 +86,7 @@ export function useDebateStream(
   useEffect(() => {
     terminatedRef.current = false;
     attemptRef.current = 0;
+    renewalsRef.current = 0;
     setPhase({ kind: "connecting" });
 
     const clearRetry = () => {
@@ -156,7 +164,20 @@ export function useDebateStream(
         const raw = parseJson((ev as MessageEvent).data);
         const parsed = DoneEventSchema.safeParse(raw);
         const final: DoneEvent = parsed.success ? parsed.data : { type: "done" };
-        terminate({ kind: "done", final });
+        if (!isStreamCut(final)) {
+          terminate({ kind: "done", final });
+          return;
+        }
+        // The backend's per-connection cap, not the end of the debate:
+        // renew the stream (capped), without spending the failure budget.
+        if (renewalsRef.current >= maxRenewals) {
+          terminate({ kind: "error", reason: "max_retries_exceeded" });
+          return;
+        }
+        renewalsRef.current += 1;
+        teardown();
+        setPhase({ kind: "connecting" });
+        connect();
       });
 
       // Named "error" event from the server (payload {reason: "..."}).
@@ -204,7 +225,7 @@ export function useDebateStream(
       terminatedRef.current = true;
       teardown();
     };
-  }, [debateId, maxRetries, backoffMs, connectTimeoutMs]);
+  }, [debateId, maxRetries, maxRenewals, backoffMs, connectTimeoutMs]);
 
   const close = () => {
     terminatedRef.current = true;

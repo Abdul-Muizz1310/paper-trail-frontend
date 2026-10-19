@@ -13,13 +13,25 @@ The backend emits three named SSE events. Every `data` field is JSON.
 | Event name | Payload shape | When |
 |---|---|---|
 | `state` | `{ type: "state", status: string, verdict: "TRUE"\|"FALSE"\|"INCONCLUSIVE"\|null, confidence: number\|null, rounds_count: number }` | Every poll where the tuple `(status, verdict, confidence, rounds_count)` changed |
-| `done` | `{ type: "done", status?: string, verdict?: ..., confidence?: ..., rounds_count?: number, reason?: "timeout" }` | When `status ∈ {"done","failed","error"}` or the 60s server-side deadline elapses |
+| `done` | `{ type: "done", status?: string, verdict?: ..., confidence?: ..., rounds_count?: number, reason?: "timeout" }` | When `status ∈ {"done","failed","error"}`, or — as `{ type: "done", reason: "timeout" }` with no `status` — when the backend's 120 s per-connection cap (`STREAM_MAX_SECONDS`) elapses while the debate is still running |
 | `error` | `{ reason: "not_found" \| "gone" \| ... }` | Terminal reasons (`not_found`, `gone`) stop retries and are preserved on the phase; other reasons trigger a reconnect |
 
 **Round content.** As of backend v0.1.1 the `state` event inlines the full `rounds[]` array, so the consumer patches the TanStack Query cache in place from the payload and does **not** refetch during streaming (the "no-refetch" design). Two exceptions:
 
 - On the terminal `done` phase the consumer refetches `GET /debates/{id}` **once** to pull `transcript_md`, which `state` events don't carry.
 - For legacy backends that omit inline `rounds[]`, the consumer falls back to a **throttled** refetch (≤ once per 3s) plus a 3s safety-net poll — active only until the first inline-rounds event is seen. It must never fire a `GET` on every `state` tick.
+
+**A stream cut is not the end of the debate.** The backend closes every stream after 120 s with
+`{ type: "done", reason: "timeout" }` and no `status`, whether or not the debate has finished. A
+debate on the free models routinely runs longer than that (each round is three LLM calls, and the
+backend's own run deadline is 300 s). Treating that event as terminal froze the page: the phase went
+to `done`, the one refetch still saw `status: "running"`, and the verdict never rendered until a
+manual reload. So the hook *renews* the stream on a cut: it closes the old `EventSource` and opens a
+new one on the same URL straight away, in phase `connecting`. Only a `done` that is not a cut is
+terminal. Renewals are capped (`maxRenewals`, default 5, i.e. at least 10 minutes of streaming);
+past the cap the hook stops with `{ kind: "error", reason: "max_retries_exceeded" }`, so a debate
+that never finishes cannot keep a tab reconnecting forever. Renewals do not spend the transport
+retry budget (`maxRetries`), which is for failures.
 
 ## Hook API
 
@@ -33,13 +45,14 @@ type StreamPhase =
 
 function useDebateStream(debateId: string, opts?: {
   maxRetries?: number;       // default 5
+  maxRenewals?: number;      // default 5: stream cuts (done + reason "timeout") renewed before giving up
   backoffMs?: (attempt: number) => number; // default: 500 * 2^attempt, capped at 8000
   onStateChange?: (ev: StateEvent) => void; // fired on every `state` event
 }): { phase: StreamPhase; close: () => void };
 ```
 
 - `phase` transitions are monotonic except `streaming → connecting` on disconnect (during retry).
-- On `done` or terminal `error`, the underlying `EventSource` is closed and not reopened.
+- On a terminal `done` (any `done` that is not a stream cut) or a terminal `error`, the underlying `EventSource` is closed and not reopened. On a stream cut it is closed and a new one is opened on the same URL.
 - Unmounting the hook closes the `EventSource`.
 
 ## Invariants
@@ -71,3 +84,16 @@ Tests live in `tests/lib/sse.test.ts` using a handwritten `FakeEventSource` inst
 - **F5** An unknown event name (e.g. `progress`) is ignored; `phase` unchanged.
 - **F6** Unmounting the React component while the hook is in `connecting` cancels the reconnect timer (verified by `vi.useFakeTimers` + advancing time past the scheduled backoff — no `EventSource` is created after unmount).
 - **F7** `debateId` changing mid-flight closes the old `EventSource` before opening a new one (no leak).
+
+### Stream cuts (2026-10-20)
+
+- **P7** A `done` event with `reason: "timeout"` and no `status` closes the current `EventSource`,
+  opens a new one on the same proxy URL, and leaves the phase `connecting`, not `done`.
+- **P8** After a renewal, `state` events on the new stream reach `onStateChange` and a real `done`
+  (with `status`) is terminal as usual.
+- **F13** A stream cut past `maxRenewals` transitions to `{ kind: "error", reason:
+  "max_retries_exceeded" }` and opens no further `EventSource`.
+- **F14** A `done` that carries a `status` is terminal even if it also says `reason: "timeout"`.
+- **F15** Renewals do not spend the transport retry budget: after `maxRetries` cuts, a transport
+  error still schedules a reconnect instead of giving up.
+

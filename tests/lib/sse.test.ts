@@ -511,3 +511,104 @@ describe("useDebateStream — failure cases (negative space)", () => {
     expect(FakeEventSource.instances.length).toBe(1);
   });
 });
+
+describe("useDebateStream — stream cuts (spec 01, 2026-10-20)", () => {
+  const CUT = { type: "done", reason: "timeout" };
+  const running = (rounds_count: number) => ({
+    type: "state",
+    status: "running",
+    verdict: null,
+    confidence: null,
+    rounds_count,
+  });
+
+  it("P7 a cut closes the stream, reopens the same URL and stays connecting, not done", () => {
+    const { result } = renderHook(() => useDebateStream(DEBATE_ID));
+    const first = FakeEventSource.last();
+    act(() => {
+      first.openNow();
+      first.emit("state", running(2));
+      first.emit("done", CUT);
+    });
+    expect(first.readyState).toBe(2);
+    expect(FakeEventSource.instances.length).toBe(2);
+    expect(FakeEventSource.last().url).toBe(`/api/backend/debates/${DEBATE_ID}/stream`);
+    expect(result.current.phase.kind).toBe("connecting");
+  });
+
+  it("P8 after a renewal, state events flow again and a real done is terminal", () => {
+    const onStateChange = vi.fn();
+    const { result } = renderHook(() => useDebateStream(DEBATE_ID, { onStateChange }));
+    act(() => {
+      FakeEventSource.last().openNow();
+      FakeEventSource.last().emit("done", CUT);
+    });
+    const renewed = FakeEventSource.last();
+    act(() => {
+      renewed.openNow();
+      renewed.emit("state", running(4));
+    });
+    expect(onStateChange).toHaveBeenCalledTimes(1);
+    expect(result.current.phase.kind).toBe("streaming");
+    act(() => {
+      renewed.emit("done", {
+        type: "done",
+        status: "done",
+        verdict: "TRUE",
+        confidence: 0.9,
+        rounds_count: 4,
+      });
+    });
+    expect(result.current.phase.kind).toBe("done");
+    expect(renewed.readyState).toBe(2);
+    expect(FakeEventSource.instances.length).toBe(2);
+  });
+
+  it("F13 a cut past maxRenewals gives up with max_retries_exceeded and opens nothing more", () => {
+    const { result } = renderHook(() => useDebateStream(DEBATE_ID, { maxRenewals: 2 }));
+    for (let i = 0; i < 2; i += 1) {
+      act(() => {
+        FakeEventSource.last().openNow();
+        FakeEventSource.last().emit("done", CUT);
+      });
+    }
+    expect(FakeEventSource.instances.length).toBe(3);
+    act(() => {
+      FakeEventSource.last().openNow();
+      FakeEventSource.last().emit("done", CUT);
+    });
+    expect(FakeEventSource.instances.length).toBe(3);
+    expect(FakeEventSource.last().readyState).toBe(2);
+    expect(result.current.phase).toEqual({ kind: "error", reason: "max_retries_exceeded" });
+  });
+
+  it("F14 a done that carries a status is terminal even with reason timeout", () => {
+    const { result } = renderHook(() => useDebateStream(DEBATE_ID));
+    act(() => {
+      FakeEventSource.last().openNow();
+      FakeEventSource.last().emit("done", { type: "done", status: "error", reason: "timeout" });
+    });
+    expect(result.current.phase.kind).toBe("done");
+    expect(FakeEventSource.instances.length).toBe(1);
+  });
+
+  it("F15 renewals do not spend the transport retry budget", () => {
+    vi.useFakeTimers();
+    const backoffMs = () => 10;
+    const { result } = renderHook(() =>
+      useDebateStream(DEBATE_ID, { maxRetries: 1, maxRenewals: 5, backoffMs }),
+    );
+    for (let i = 0; i < 2; i += 1) {
+      act(() => {
+        FakeEventSource.last().emit("done", CUT);
+      });
+    }
+    expect(FakeEventSource.instances.length).toBe(3);
+    act(() => FakeEventSource.last().fail());
+    expect(result.current.phase.kind).toBe("connecting");
+    act(() => {
+      vi.advanceTimersByTime(20);
+    });
+    expect(FakeEventSource.instances.length).toBe(4);
+  });
+});
