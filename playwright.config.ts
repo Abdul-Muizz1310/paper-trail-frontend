@@ -38,12 +38,15 @@ export default defineConfig({
   globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // A live retry is a whole new real debate on the free-model quota.
+  retries: process.env.CI && !live ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: "list",
   use: {
     baseURL,
-    trace: "on-first-retry",
+    // Live mode never retries, so keep its evidence on the first failure.
+    trace: live ? "retain-on-failure" : "on-first-retry",
+    screenshot: live ? "only-on-failure" : "off",
   },
   projects: [
     {

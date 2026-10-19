@@ -11,7 +11,7 @@
 ![tailwind](https://img.shields.io/badge/Tailwind-v4-06b6d4?style=flat-square&logo=tailwindcss&logoColor=white)
 ![zod](https://img.shields.io/badge/Zod-boundaries-3068b7?style=flat-square)
 ![vercel](https://img.shields.io/badge/Vercel-deployed-000000?style=flat-square&logo=vercel&logoColor=white)
-![tests](https://img.shields.io/badge/tests-186%20Vitest-6e9f18?style=flat-square)
+![tests](https://img.shields.io/badge/tests-350%20Vitest-6e9f18?style=flat-square)
 ![biome](https://img.shields.io/badge/lint-Biome-60a5fa?style=flat-square)
 ![rc](https://img.shields.io/badge/react--compiler-enabled-ff69b4?style=flat-square)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
@@ -46,7 +46,8 @@ The whole app is wrapped in a **terminal-window aesthetic**: grid backgrounds, s
 ## ✨ Features
 
 - 📡 Live SSE streaming of pro/con/judge rounds
-- 🔁 Automatic reconnect with exponential backoff (5 retries, cap 8s)
+- 🔁 Automatic reconnect with exponential backoff (5 retries, cap 8s), and the stream is renewed when the backend cuts it at its 120 s cap, so a long debate still reaches its verdict
+- 🧯 A debate that fails says so (`debate-failed` alert) instead of looking stalled
 - 🛟 Safety-net polling fallback (3s) while streaming
 - 🛡️ Zod validation at every external boundary (API, env, SSE events)
 - ⚡ TanStack Query cache patched in-place from SSE payloads (no refetch during streaming; one refetch on terminal to pull the transcript)
@@ -102,7 +103,7 @@ sequenceDiagram
 
 **Streaming model:** SSE is the primary transport. When the backend inlines `rounds[]` in `state` events (v0.1.1+), the cache is patched directly — **no refetch round-trip** while streaming. The only guaranteed `GET /debates/{id}` happens once on the terminal `done` phase to pull the final `transcript_md` (which `state` events don't carry). A 3-second polling fallback runs **only** for legacy backends that omit inline `rounds[]`; once inline rounds are observed the poll switches off so it can't storm the backend.
 
-**Reconnect logic** ([`src/lib/sse.ts`](src/lib/sse.ts)): 5-retry budget, exponential backoff `min(500ms × 2^attempt, 8000ms)`. Terminated on `done`, `error: not_found`, or unmount. Terminal refs prevent stale closures; timers cleaned up on every path.
+**Reconnect logic** ([`src/lib/sse.ts`](src/lib/sse.ts)): 5-retry budget, exponential backoff `min(500ms × 2^attempt, 8000ms)`. The backend closes every stream after 120 s with `done` + `reason: "timeout"` while the debate may still be running; that cut reopens the stream (up to 5 renewals) instead of ending it. Terminated on any other `done`, `error: not_found`, or unmount. Terminal refs prevent stale closures; timers cleaned up on every path.
 
 **Zod at every boundary:**
 - 🌱 `env.ts` — validates `NEXT_PUBLIC_*` at import time
@@ -233,12 +234,12 @@ pnpm test:e2e                # Playwright chromium
 
 | Metric | Value |
 |---|---|
-| **Unit tests** | 186 tests (Vitest + jsdom; 185 passed, 1 skipped) |
-| **Line coverage** | **90.45%** (417/461 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
+| **Unit tests** | 350 tests (Vitest + jsdom; 349 passed, 1 skipped) |
+| **Line coverage** | **92.37%** (606/656 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
 | **E2E** | Playwright chromium (mocked mode), fixture `tests/e2e/fixtures/transcript.md` — runs on every PR via the `e2e` CI job. UI specs fulfil `/api/backend/**` in the browser; `tests/e2e/proxy.spec.ts` drives the real proxy, unmocked, against a local mock backend that verifies every token with a throwaway key |
-| **E2E live smoke** | `L1` scenario in `tests/e2e/debate-flow.spec.ts`, gated by `E2E_LIVE=1` — skipped on every normal PR run, exercised nightly against the real Render backend by `.github/workflows/nightly-e2e.yml` (non-blocking; Render is currently billing-suspended, so it is expected to fail until the service is reactivated) |
+| **E2E live smoke** | `L1` scenario in `tests/e2e/debate-flow.spec.ts`, gated by `E2E_LIVE=1` — skipped on every normal PR run, run nightly (or `gh workflow run nightly-e2e.yml`) by `.github/workflows/nightly-e2e.yml` against the real Render backend through the signing proxy: one real 3-round debate to a `TRUE` verdict and its transcript, no retries (free-model quota). The job fails when the scenario fails |
 | **Smoke** | `tests/smoke.test.ts` — env-gated live `GET /health` check against a deployed backend; skips unless `SMOKE_BASE_URL` is set. Not passed to the main `test` job (it always self-skips there); only the dedicated `smoke` job (`.github/workflows/ci.yml`, gated to `push`) receives it, from the `SMOKE_BASE_URL` repository variable |
-| **SSE suite** | 28 cases (`tests/lib/sse.test.ts`): 5 property cases (P1–P3, P5, P6) + 23 failure cases (F1–F12 and sub-variants: lifecycles, retries, cleanup, backoff) |
+| **SSE suite** | 35 cases (`tests/lib/sse.test.ts`): 9 pass cases (P1–P3, P5–P8, P16 ×2) + 26 failure cases (F1–F15 and sub-variants: lifecycles, retries, stream cuts, cleanup, backoff) |
 | **Methodology** | Red-first spec-TDD. Zod-validated discriminated unions instead of defensive runtime checks. |
 | **Bundle size** | Reproducible client bundle measurement — see [`benchmarks/bundle-size.md`](benchmarks/bundle-size.md) |
 

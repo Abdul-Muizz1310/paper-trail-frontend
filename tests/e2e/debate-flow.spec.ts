@@ -258,29 +258,57 @@ test.describe("debate flow (mocked backend)", () => {
   });
 });
 
-// See docs/specs/03-e2e.md "Live smoke (nightly, E2E_LIVE=1)". Skipped by
-// default (including on every normal PR run) so it never depends on the
-// live Render backend to keep CI green; run nightly with E2E_LIVE=1 by
-// .github/workflows/nightly-e2e.yml, against the real deployed backend.
-// Expected to be flaky (Render cold start + LLM variability) -- that
-// workflow is non-blocking and pages a notification only, it never fails a PR.
+// See docs/specs/03-e2e.md "Live smoke (nightly, E2E_LIVE=1)". Skipped unless
+// E2E_LIVE is set, so no normal PR run depends on the live backend; run by
+// .github/workflows/nightly-e2e.yml, which fails when this fails. It drives the
+// app exactly as a visitor does: the browser calls the frontend's own signing
+// proxy, which signs with the real key and forwards to the deployed backend.
+// One real debate per run spends ~4 requests of the account's 50 free-model
+// requests a day, so live mode runs it once, without retries.
 test.describe("L1 live smoke (nightly only, real backend)", () => {
   test.skip(!process.env.E2E_LIVE, "set E2E_LIVE=1 to run this against the real deployed backend");
 
-  test("submits a real claim and reaches a TRUE verdict with confidence >= 0.5", async ({
+  test("a real claim reaches a TRUE verdict and a transcript through the signed proxy", async ({
     page,
+    request,
   }) => {
-    test.setTimeout(100_000);
+    test.setTimeout(600_000);
+
+    // Wake the free-tier backend first (a cold start takes ~70 s) through the
+    // proxy, so the 30 s create-debate timeout measures the app, not Render.
+    // A 503 here means the proxy has no signing key; a 401 that the backend
+    // rejected its token.
+    const health = await request.get("/api/backend/health", { timeout: 150_000 });
+    expect(health.status(), "GET /api/backend/health").toBe(200);
+    expect(await health.json()).toMatchObject({ status: "ok", db: "ok" });
+
     await page.goto("/");
     await page.getByRole("textbox", { name: /claim/i }).fill("The Eiffel Tower is in Paris.");
+    // The fewest rounds the UI offers: the debate spends free-tier requests.
+    await page.getByRole("button", { name: /advanced/i }).click();
+    await page.getByLabel(/max-rounds/i).selectOption("3");
     await page.getByRole("button", { name: /start[- ]debate/i }).click();
 
-    await expect(page.getByTestId("judge-verdict")).toHaveAttribute("data-variant", "true", {
-      timeout: 90_000,
-    });
+    // POST /debates went through the proxy and the backend accepted the token.
+    // (Before the proxy, the browser's untokened POST got 401 and the page
+    // never left home, which surfaced only as "judge-verdict not found".)
+    await expect(page).toHaveURL(/\/debates\/[0-9a-f-]{36}$/, { timeout: 60_000 });
 
+    // Whichever terminal state renders first decides: a failed run says so
+    // instead of timing out. The backend's own run deadline is 300 s.
+    const verdict = page.getByTestId("judge-verdict");
+    const failed = page.getByTestId("debate-failed");
+    await expect(verdict.or(failed)).toBeVisible({ timeout: 330_000 });
+    await expect(failed, "the live debate failed before reaching a verdict").toHaveCount(0);
+    await expect(verdict).toHaveAttribute("data-variant", "true");
     const confidence = await page.getByTestId("confidence-bar").getAttribute("aria-valuenow");
-    expect(confidence).not.toBeNull();
     expect(Number(confidence)).toBeGreaterThanOrEqual(0.5);
+
+    // The transcript the verdict links to is the backend's rendered markdown.
+    await page.getByRole("link", { name: /transcript/i }).click();
+    await expect(page).toHaveURL(/\/transcript$/);
+    await expect(page.getByRole("heading", { level: 2, name: "Verdict" })).toBeVisible({
+      timeout: 30_000,
+    });
   });
 });
