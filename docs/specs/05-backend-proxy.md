@@ -79,8 +79,12 @@ Copied when present: `content-type`, `accept`, `last-event-id`, `x-request-id`. 
 is replaced. Added:
 
 - `x-platform-token`: the fresh token;
-- `x-forwarded-for`: the incoming `x-forwarded-for`, else `x-real-ip`, else omitted, so the
-  backend's per-client rate limit still sees the visitor.
+- `x-forwarded-for`: **exactly one address**, which the proxy sets itself: the leftmost non-empty
+  entry of the incoming `x-forwarded-for`, else of `x-real-ip`, else omitted, so the backend's
+  per-client rate limit still sees the visitor. Platform contract v2 (amended 2026-10-20) keys a
+  frontend-token request's bucket on `"paper-trail-frontend:{leftmost x-forwarded-for}"`, because
+  this frontend's `sub` is the same for every visitor; forwarding a whole chain would let a client
+  choose its own bucket by prepending to it.
 
 ### Body and fetch options
 
@@ -169,7 +173,8 @@ E2E in `tests/e2e/proxy.spec.ts`.
 - **P8** the path joins onto the backend base (with or without a base path) and the query string
   is kept.
 - **P9** request headers: the four allowlisted ones are copied, `x-platform-token` is set,
-  `x-forwarded-for` comes from `x-forwarded-for`, else `x-real-ip`, else is absent.
+  `x-forwarded-for` is one address: the leftmost non-empty entry of `x-forwarded-for`, else of
+  `x-real-ip`, else it is absent. It never contains a comma.
 - **P10** response headers: only the five allowlisted ones are copied.
 - **P11** `GET` through the route reaches `${NEXT_PUBLIC_API_URL}/<path>?<query>` with a token that
   verifies against the public key, the allowlisted headers, `cache: "no-store"`,
