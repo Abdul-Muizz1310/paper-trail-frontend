@@ -148,25 +148,23 @@ describe("forwarding", () => {
     expect(res.headers.has("server")).toBe(false);
   });
 
-  it.each([
-    "POST",
-    "PUT",
-    "PATCH",
-    "DELETE",
-  ] as const)("P12 %s forwards its method and body byte for byte", async (method) => {
-    const body = JSON.stringify({ claim: "Café ☕ is a drink.", max_rounds: 3 });
-    await call(route[method], ["debates"], {
-      method,
-      body,
-      headers: { "content-type": "application/json" },
-    });
-    const up = upstreamCall();
-    expect(up.init.method).toBe(method);
-    expect(up.headers.get("content-type")).toBe("application/json");
-    const sent = up.init.body as ArrayBuffer;
-    expect(sent).toBeInstanceOf(ArrayBuffer);
-    expect(Buffer.from(sent).equals(Buffer.from(body, "utf8"))).toBe(true);
-  });
+  it.each(["POST", "PUT", "PATCH", "DELETE"] as const)(
+    "P12 %s forwards its method and body byte for byte",
+    async (method) => {
+      const body = JSON.stringify({ claim: "Café ☕ is a drink.", max_rounds: 3 });
+      await call(route[method], ["debates"], {
+        method,
+        body,
+        headers: { "content-type": "application/json" },
+      });
+      const up = upstreamCall();
+      expect(up.init.method).toBe(method);
+      expect(up.headers.get("content-type")).toBe("application/json");
+      const sent = up.init.body as ArrayBuffer;
+      expect(sent).toBeInstanceOf(ArrayBuffer);
+      expect(Buffer.from(sent).equals(Buffer.from(body, "utf8"))).toBe(true);
+    },
+  );
 
   it("P13 streams SSE: the first event arrives while the upstream is still open", async () => {
     const encoder = new TextEncoder();
