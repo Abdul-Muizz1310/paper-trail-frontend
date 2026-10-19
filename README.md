@@ -235,7 +235,7 @@ pnpm test:e2e                # Playwright chromium
 | Metric | Value |
 |---|---|
 | **Unit tests** | 362 tests (Vitest + jsdom; 361 passed, 1 skipped) |
-| **Line coverage** | **92.4%** (608/658 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
+| **Line coverage** | **92.42%** (610/660 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
 | **E2E** | Playwright chromium (mocked mode), fixture `tests/e2e/fixtures/transcript.md` — runs on every PR via the `e2e` CI job. UI specs fulfil `/api/backend/**` in the browser; `tests/e2e/proxy.spec.ts` drives the real proxy, unmocked, against a local mock backend that verifies every token with a throwaway key |
 | **E2E live smoke** | `L1` scenario in `tests/e2e/debate-flow.spec.ts`, gated by `E2E_LIVE=1` — skipped on every normal PR run, run nightly (or `gh workflow run nightly-e2e.yml`) by `.github/workflows/nightly-e2e.yml` against the real Render backend through the signing proxy: one real 3-round debate to a `TRUE` verdict and its transcript, no retries (free-model quota). The job fails when the scenario fails |
 | **Smoke** | `tests/smoke.test.ts` — env-gated live `GET /health` check against a deployed backend; skips unless `SMOKE_BASE_URL` is set. Not passed to the main `test` job (it always self-skips there); only the dedicated `smoke` job (`.github/workflows/ci.yml`, gated to `push`) receives it, from the `SMOKE_BASE_URL` repository variable |
