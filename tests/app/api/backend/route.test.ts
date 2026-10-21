@@ -103,6 +103,8 @@ describe("forwarding", () => {
     expect(verifiesWith(token, pair.publicB64)).toBe(true);
     const claims = decodePart(token.split(".")[1]) as Record<string, unknown>;
     expect(claims).toMatchObject({
+      iss: "paper-trail-frontend",
+      aud: "paper-trail",
       sub: "paper-trail-frontend",
       role: "frontend",
       service: "paper-trail",

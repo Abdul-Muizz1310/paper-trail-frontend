@@ -104,6 +104,8 @@ test.describe("signed backend proxy, composed (spec 05)", () => {
       expect(r.check.valid, `${r.method} ${r.path}`).toBe(true);
       const claims = verifiedClaims(r.token);
       expect(claims).toMatchObject({
+        iss: "paper-trail-frontend",
+        aud: "paper-trail",
         sub: "paper-trail-frontend",
         role: "frontend",
         service: "paper-trail",

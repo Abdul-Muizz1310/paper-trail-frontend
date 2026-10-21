@@ -48,10 +48,18 @@ export function resolveUpstreamUrl(
   return url.origin === base.origin ? url : null;
 }
 
+/**
+ * The visitor's address, exactly one (platform contract v2): the leftmost
+ * non-empty entry of `x-forwarded-for`, else of `x-real-ip`. The backend keys
+ * this frontend's rate-limit bucket on it, so a chain must never pass through.
+ */
 function clientAddress(incoming: Headers): string | null {
   for (const name of ["x-forwarded-for", "x-real-ip"]) {
-    const value = incoming.get(name)?.trim();
-    if (value) return value;
+    const first = (incoming.get(name) ?? "")
+      .split(",")
+      .map((entry) => entry.trim())
+      .find((entry) => entry !== "");
+    if (first !== undefined) return first;
   }
   return null;
 }

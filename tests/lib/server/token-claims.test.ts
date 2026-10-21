@@ -40,6 +40,8 @@ describe("token header and claims", () => {
     const claims = tokenClaims(1_760_000_000_999, "8a6e0804-2bd0-4672-b79d-d97027f9071a");
     expect(JSON.stringify(claims)).toBe(
       JSON.stringify({
+        iss: "paper-trail-frontend",
+        aud: "paper-trail",
         sub: "paper-trail-frontend",
         role: "frontend",
         service: "paper-trail",
@@ -48,6 +50,16 @@ describe("token header and claims", () => {
         jti: "8a6e0804-2bd0-4672-b79d-d97027f9071a",
       }),
     );
+  });
+
+  it("F13 contract v2: aud is one string naming only paper-trail, and iss is never bastion", () => {
+    const claims: Record<string, unknown> = tokenClaims(0, "j");
+    expect(typeof claims.aud).toBe("string");
+    expect(Array.isArray(claims.aud)).toBe(false);
+    expect(claims.aud).toBe("paper-trail");
+    expect(claims.iss).toBe("paper-trail-frontend");
+    expect(claims.iss).not.toBe("bastion");
+    expect(claims.aud).toBe(claims.service);
   });
 
   it("P4 the signing input is base64url(header) . base64url(claims)", () => {

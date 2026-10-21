@@ -11,7 +11,7 @@
 ![tailwind](https://img.shields.io/badge/Tailwind-v4-06b6d4?style=flat-square&logo=tailwindcss&logoColor=white)
 ![zod](https://img.shields.io/badge/Zod-boundaries-3068b7?style=flat-square)
 ![vercel](https://img.shields.io/badge/Vercel-deployed-000000?style=flat-square&logo=vercel&logoColor=white)
-![tests](https://img.shields.io/badge/tests-350%20Vitest-6e9f18?style=flat-square)
+![tests](https://img.shields.io/badge/tests-362%20Vitest-6e9f18?style=flat-square)
 ![biome](https://img.shields.io/badge/lint-Biome-60a5fa?style=flat-square)
 ![rc](https://img.shields.io/badge/react--compiler-enabled-ff69b4?style=flat-square)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
@@ -99,7 +99,7 @@ sequenceDiagram
     UI->>Hook: unmount → cleanup
 ```
 
-**Signed proxy:** the backend demands a platform token on every data route, and `EventSource` cannot send headers, so the browser never calls the backend's origin. Every call (`/health`, REST and the SSE stream) goes to the same-origin route `/api/backend/...`, which mints a 60-second Ed25519 token server-side, forwards an allowlist of headers and streams the answer back unbuffered. See [spec 05](docs/specs/05-backend-proxy.md).
+**Signed proxy:** the backend demands a platform token on every data route, and `EventSource` cannot send headers, so the browser never calls the backend's origin. Every call (`/health`, REST and the SSE stream) goes to the same-origin route `/api/backend/...`, which mints a 60-second Ed25519 token server-side (platform contract v2: `iss` `paper-trail-frontend`, `aud` `paper-trail`), forwards an allowlist of headers and streams the answer back unbuffered. See [spec 05](docs/specs/05-backend-proxy.md).
 
 **Streaming model:** SSE is the primary transport. When the backend inlines `rounds[]` in `state` events (v0.1.1+), the cache is patched directly — **no refetch round-trip** while streaming. The only guaranteed `GET /debates/{id}` happens once on the terminal `done` phase to pull the final `transcript_md` (which `state` events don't carry). A 3-second polling fallback runs **only** for legacy backends that omit inline `rounds[]`; once inline rounds are observed the poll switches off so it can't storm the backend.
 
@@ -234,8 +234,8 @@ pnpm test:e2e                # Playwright chromium
 
 | Metric | Value |
 |---|---|
-| **Unit tests** | 350 tests (Vitest + jsdom; 349 passed, 1 skipped) |
-| **Line coverage** | **92.37%** (606/656 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
+| **Unit tests** | 362 tests (Vitest + jsdom; 361 passed, 1 skipped) |
+| **Line coverage** | **92.42%** (610/660 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
 | **E2E** | Playwright chromium (mocked mode), fixture `tests/e2e/fixtures/transcript.md` — runs on every PR via the `e2e` CI job. UI specs fulfil `/api/backend/**` in the browser; `tests/e2e/proxy.spec.ts` drives the real proxy, unmocked, against a local mock backend that verifies every token with a throwaway key |
 | **E2E live smoke** | `L1` scenario in `tests/e2e/debate-flow.spec.ts`, gated by `E2E_LIVE=1` — skipped on every normal PR run, run nightly (or `gh workflow run nightly-e2e.yml`) by `.github/workflows/nightly-e2e.yml` against the real Render backend through the signing proxy: one real 3-round debate to a `TRUE` verdict and its transcript, no retries (free-model quota). The job fails when the scenario fails |
 | **Smoke** | `tests/smoke.test.ts` — env-gated live `GET /health` check against a deployed backend; skips unless `SMOKE_BASE_URL` is set. Not passed to the main `test` job (it always self-skips there); only the dedicated `smoke` job (`.github/workflows/ci.yml`, gated to `push`) receives it, from the `SMOKE_BASE_URL` repository variable |

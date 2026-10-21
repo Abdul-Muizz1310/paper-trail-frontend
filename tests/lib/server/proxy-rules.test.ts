@@ -96,12 +96,35 @@ describe("upstreamRequestHeaders", () => {
     });
   });
 
-  it("P9 x-forwarded-for comes from x-forwarded-for first", () => {
+  it("P9 x-forwarded-for comes from x-forwarded-for first, as exactly one address", () => {
     const out = upstreamRequestHeaders(
       new Headers({ "x-forwarded-for": "203.0.113.7, 10.0.0.1", "x-real-ip": "198.51.100.2" }),
       "t",
     );
-    expect(out.get("x-forwarded-for")).toBe("203.0.113.7, 10.0.0.1");
+    expect(out.get("x-forwarded-for")).toBe("203.0.113.7");
+  });
+
+  it.each([
+    ["a chain of three", "203.0.113.7, 10.0.0.1, 10.0.0.2", "203.0.113.7"],
+    ["padding and an empty first entry", " , 203.0.113.9 ,10.0.0.1", "203.0.113.9"],
+    ["a single address", "2001:db8::1", "2001:db8::1"],
+  ])("P9 forwards one address from %s", (_label, incoming, expected) => {
+    const out = upstreamRequestHeaders(new Headers({ "x-forwarded-for": incoming }), "t");
+    expect(out.get("x-forwarded-for")).toBe(expected);
+    expect(out.get("x-forwarded-for")).not.toContain(",");
+  });
+
+  it("P9 x-real-ip is also cut to one address", () => {
+    const out = upstreamRequestHeaders(new Headers({ "x-real-ip": "198.51.100.2, 10.0.0.1" }), "t");
+    expect(out.get("x-forwarded-for")).toBe("198.51.100.2");
+  });
+
+  it("P9 an x-forwarded-for of only commas falls back to x-real-ip", () => {
+    const out = upstreamRequestHeaders(
+      new Headers({ "x-forwarded-for": " , ,", "x-real-ip": "198.51.100.2" }),
+      "t",
+    );
+    expect(out.get("x-forwarded-for")).toBe("198.51.100.2");
   });
 
   it("P9 x-forwarded-for falls back to x-real-ip", () => {

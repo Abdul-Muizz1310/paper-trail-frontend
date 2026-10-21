@@ -8,6 +8,10 @@ import "server-only";
  */
 
 export const TOKEN_KEY_ID = "paper-trail-frontend-2026-10";
+/** Platform contract v2: this frontend's issuer id; the backend ties it to this key. */
+export const TOKEN_ISSUER = "paper-trail-frontend";
+/** Platform contract v2: exactly one audience, the backend's service id (never an array). */
+export const TOKEN_AUDIENCE = "paper-trail";
 export const TOKEN_SUBJECT = "paper-trail-frontend";
 export const TOKEN_ROLE = "frontend";
 /** bastion's service id for paper-trail; the backend accepts a frontend token only for itself. */
@@ -21,6 +25,8 @@ export type PlatformTokenHeader = {
 };
 
 export type PlatformTokenClaims = {
+  readonly iss: typeof TOKEN_ISSUER;
+  readonly aud: typeof TOKEN_AUDIENCE;
   readonly sub: typeof TOKEN_SUBJECT;
   readonly role: typeof TOKEN_ROLE;
   readonly service: typeof TOKEN_SERVICE;
@@ -44,6 +50,8 @@ export function base64url(bytes: Uint8Array): string {
 export function tokenClaims(nowMs: number, jti: string): PlatformTokenClaims {
   const iat = Math.floor(nowMs / 1000);
   return {
+    iss: TOKEN_ISSUER,
+    aud: TOKEN_AUDIENCE,
     sub: TOKEN_SUBJECT,
     role: TOKEN_ROLE,
     service: TOKEN_SERVICE,
