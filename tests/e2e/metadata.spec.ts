@@ -82,6 +82,24 @@ test.describe("site metadata (spec 04)", () => {
     await expect(page.locator('head meta[name="robots"]')).toHaveCount(0);
   });
 
+  test("P14 the home page carries the site's structured data", async ({ page }) => {
+    await page.goto("/");
+    const scripts = page.locator('script[type="application/ld+json"]');
+    await expect(scripts).toHaveCount(1);
+    const graph = JSON.parse((await scripts.textContent()) ?? "")["@graph"];
+    expect(graph.map((node: { "@type": string }) => node["@type"])).toEqual([
+      "WebSite",
+      "WebApplication",
+      "Person",
+    ]);
+    expect(graph[0]).toMatchObject({ url: `${SITE.url}/`, name: SITE.name });
+  });
+
+  test("P14 a debate page carries no structured data", async ({ page }) => {
+    await page.goto(`/debates/${DEBATE_ID}`);
+    await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
+  });
+
   test("P10 a debate page has its own og:title and stays out of search", async ({
     page,
     baseURL,

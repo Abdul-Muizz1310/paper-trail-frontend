@@ -11,7 +11,7 @@
 ![tailwind](https://img.shields.io/badge/Tailwind-v4-06b6d4?style=flat-square&logo=tailwindcss&logoColor=white)
 ![zod](https://img.shields.io/badge/Zod-boundaries-3068b7?style=flat-square)
 ![vercel](https://img.shields.io/badge/Vercel-deployed-000000?style=flat-square&logo=vercel&logoColor=white)
-![tests](https://img.shields.io/badge/tests-362%20Vitest-6e9f18?style=flat-square)
+![tests](https://img.shields.io/badge/tests-376%20Vitest-6e9f18?style=flat-square)
 ![biome](https://img.shields.io/badge/lint-Biome-60a5fa?style=flat-square)
 ![rc](https://img.shields.io/badge/react--compiler-enabled-ff69b4?style=flat-square)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
@@ -234,7 +234,7 @@ pnpm test:e2e                # Playwright chromium
 
 | Metric | Value |
 |---|---|
-| **Unit tests** | 362 tests (Vitest + jsdom; 361 passed, 1 skipped) |
+| **Unit tests** | 376 tests (Vitest + jsdom; 375 passed, 1 skipped) |
 | **Line coverage** | **92.42%** (610/660 lines over all `src/`) — including the SSE↔cache orchestrator `DebateView.tsx` (~94%), previously untested |
 | **E2E** | Playwright chromium (mocked mode), fixture `tests/e2e/fixtures/transcript.md` — runs on every PR via the `e2e` CI job. UI specs fulfil `/api/backend/**` in the browser; `tests/e2e/proxy.spec.ts` drives the real proxy, unmocked, against a local mock backend that verifies every token with a throwaway key |
 | **E2E live smoke** | `L1` scenario in `tests/e2e/debate-flow.spec.ts`, gated by `E2E_LIVE=1` — skipped on every normal PR run, run nightly (or `gh workflow run nightly-e2e.yml`) by `.github/workflows/nightly-e2e.yml` against the real Render backend through the signing proxy: one real 3-round debate to a `TRUE` verdict and its transcript, no retries (free-model quota). The job fails when the scenario fails |

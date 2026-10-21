@@ -102,6 +102,25 @@ to at most two lines across the card's 1056 px. Every Geist Mono glyph is 0.6 em
 is computed exactly, not measured. paper-trail's headline fits at 96 px: `watch AI argue` /
 `with itself.` in 18 columns.
 
+## 6. Indexable pages and structured data (2026-10-21)
+
+- `pageMetadata(site, route, { title, description })` (`src/lib/site/metadata.ts`) is how an
+  indexable page other than the home page describes itself: it returns the title, the
+  description and the route as canonical, and throws a `SiteConfigError` when the module loads
+  on an empty title, a title the template (` — paper-trail`) takes past 70 characters, or a
+  description outside 50 to 160 characters. paper-trail's only indexable page is `/`, which
+  keeps the site's own title and description and its canonical `/`; the helper is shared,
+  unchanged, with the five other frontends.
+- `/` renders one `<script type="application/ld+json">` (`src/lib/site/structured-data.tsx`):
+  a schema.org `@graph` of a `WebSite` (`<origin>/#website`: url, name, description,
+  `inLanguage: "en"`, the author as publisher), a `WebApplication` (`<origin>/#app`: url, name,
+  description, `applicationCategory: "DeveloperApplication"`, `operatingSystem: "Any"`,
+  `isAccessibleForFree: true`, part of the website, by the author) and the author as a `Person`
+  (`https://github.com/Abdul-Muizz1310#person`), all from the config. Search engines read the
+  site name from the `WebSite` node, so a result says `paper-trail`, not `vercel.app`. No
+  rating, review or price is claimed. Every `<` in the JSON is escaped as `\u003c`, so no value
+  can close the script tag. A debate page carries none.
+
 ## Test cases (S3 red tests)
 
 Unit tests live in `tests/lib/site/`; the E2E cases in `tests/e2e/metadata.spec.ts`.
@@ -134,9 +153,19 @@ Unit tests live in `tests/lib/site/`; the E2E cases in `tests/e2e/metadata.spec.
   `og:title`, and the page is `noindex`.
 - **P11** (E2E) every metadata route answers 200 with its content type.
 
+- **P12** `pageMetadata` returns the title, description and canonical; it accepts a title the
+  template takes to exactly 70 characters and descriptions of exactly 50 and 160.
+- **P13** the structured data: the graph in §6, derived from the config; its serialisation
+  escapes `<` and parses back to the same value; it renders as one `application/ld+json`
+  script.
+- **P14** (E2E) `/` carries exactly one structured-data script whose `WebSite` node names the
+  site on the production origin; a debate page carries none.
+
 ### Failure cases (negative space)
 
 - **F1** `defineSite` rejects each case in §1, naming the reason — including every never-use
   host.
 - **F2** `defineSite` rejects the stranger's `https://paper-trail-frontend.vercel.app` (the plain
   host, without `-sable`).
+- **F3** `pageMetadata` rejects an empty title, a title the template takes past 70 characters,
+  and a description under 50 or over 160, naming the page and the reason.
